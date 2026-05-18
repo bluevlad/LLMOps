@@ -1,0 +1,41 @@
+# LLMOps — production / staging compose
+# 공유 PostgreSQL(database-services/docker-compose.yml의 'postgresql' 컨테이너)에 연결.
+# 네트워크: 'database-network' (postgresql/pgadmin/mongodb와 같은 네트워크)
+# DATABASE_URL은 .env에서 주입 (호스트는 'postgresql' 컨테이너명).
+
+services:
+  llmops-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: llmops-backend:latest
+    container_name: llmops-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+    ports:
+      - "9110:9110"
+    extra_hosts:
+      # Ollama / MLX 는 호스트(MacBook)에서 실행 → host.docker.internal 로 접근
+      - "host.docker.internal:host-gateway"
+    networks:
+      - database-network
+
+  llmops-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: llmops-frontend:latest
+    container_name: llmops-frontend
+    restart: unless-stopped
+    depends_on:
+      - llmops-backend
+    ports:
+      - "4110:4110"
+    networks:
+      - database-network
+
+networks:
+  database-network:
+    external: true

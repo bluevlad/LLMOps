@@ -1,0 +1,28 @@
+# --- Web framework ---
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+
+# --- Settings ---
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# --- Database (Phase 1b 활성화) ---
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.13.3
+
+# --- Auth (Phase 1b 활성화) ---
+python-jose[cryptography]==3.3.0
+google-auth==2.35.0
+requests==2.32.3              # google.auth.transport.requests 의존
+
+# --- HTTP client (Ollama 폴링용) ---
+httpx==0.27.2
+
+# --- Scheduler (Phase 1b: Ollama/MLX 폴링 잡) ---
+apscheduler==3.10.4
+
+# --- Test ---
+pytest==8.3.3
+pytest-asyncio==0.24.0
+respx==0.23.1                 # httpx 모킹
