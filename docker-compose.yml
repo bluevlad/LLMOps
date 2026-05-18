@@ -14,11 +14,17 @@ services:
     env_file: .env
     environment:
       APP_ENV: ${APP_ENV:-prod}
+      # MLX 스캐너가 컨테이너 안에서 호스트 디렉토리 그대로 읽도록 동일 경로 마운트.
+      # .env 의 MLX_MODEL_DIR 와 일치해야 함.
+      MLX_MODEL_DIR: /host/.cache/huggingface/hub
     ports:
       - "9110:9110"
     extra_hosts:
-      # Ollama / MLX 는 호스트(MacBook)에서 실행 → host.docker.internal 로 접근
+      # Ollama 는 호스트(MacBook)에서 실행 → host.docker.internal 로 접근
       - "host.docker.internal:host-gateway"
+    volumes:
+      # MLX 모델 디렉토리 read-only 마운트 (스캐너 input)
+      - /Users/rainend/.cache/huggingface:/host/.cache/huggingface:ro
     networks:
       - database-network
 
