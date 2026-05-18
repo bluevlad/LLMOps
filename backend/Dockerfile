@@ -16,12 +16,14 @@ COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
 COPY app ./app
+COPY alembic.ini ./
 
 FROM base AS runtime
 
 EXPOSE 9110
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -fsS http://localhost:9110/api/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9110"]
+# alembic upgrade head → uvicorn (마이그레이션 idempotent, 매 시작마다 안전)
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 9110"]

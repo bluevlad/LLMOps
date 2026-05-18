@@ -1,0 +1,141 @@
+name: Deploy LLMOps to OrbStack (macOS)
+
+# 표준: standards/git/MAIN_PROD_WORKFLOW.md (Claude-Opus-bluevlad)
+# 발동: prod 브랜치 push 시 self-hosted runner 가 docker compose up
+# 패턴 참조: InfraWatcher/.github/workflows/deploy-macos.yml
+
+on:
+  push:
+    branches: [ "prod" ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.github/**/*.md'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy LLMOps to OrbStack
+    runs-on: [self-hosted, macos, orbstack]
+
+    defaults:
+      run:
+        working-directory: /Users/rainend/GIT/LLMOps
+        shell: bash
+
+    steps:
+    - name: Pull latest changes
+      run: |
+        git fetch origin prod
+        git checkout prod
+        git reset --hard origin/prod
+
+    - name: Verify .env exists
+      run: |
+        if [ ! -f .env ]; then
+          echo "::error::.env file missing. 최초 배포 시 .env 수동 배치 필요 (gitignored)"
+          exit 1
+        fi
+        echo ".env present ($(wc -l < .env) lines)"
+
+    - name: Check if Docker restart needed
+      id: check-docker
+      run: |
+        changed_files=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "FIRST_DEPLOY")
+        echo "Changed files:"
+        echo "$changed_files"
+
+        need_restart=false
+        if [ "$changed_files" = "FIRST_DEPLOY" ]; then
+          need_restart=true
+        else
+          for file in $changed_files; do
+            case "$file" in
+              backend/*|frontend/*|docker-compose.yml|.env*)
+                need_restart=true
+                echo "Docker restart needed: $file"
+                break
+                ;;
+            esac
+          done
+        fi
+
+        echo "Need Docker restart: $need_restart"
+        echo "need_restart=$need_restart" >> $GITHUB_OUTPUT
+
+    - name: Stop existing containers
+      if: steps.check-docker.outputs.need_restart == 'true'
+      run: docker compose down --remove-orphans
+      continue-on-error: true
+
+    - name: Build and start containers
+      if: steps.check-docker.outputs.need_restart == 'true'
+      run: docker compose up -d --build
+
+    - name: Wait for backend health check
+      if: steps.check-docker.outputs.need_restart == 'true'
+      run: |
+        echo "Waiting for backend (port 9110)..."
+        for i in $(seq 1 30); do
+          if curl -sf http://localhost:9110/api/health > /dev/null 2>&1; then
+            echo "Backend is healthy!"
+            curl -s http://localhost:9110/api/health | python3 -m json.tool
+            break
+          fi
+          if [ $i -eq 30 ]; then
+            echo "::error::Backend health check timeout"
+            docker compose logs llmops-backend --tail=80
+            exit 1
+          fi
+          sleep 2
+        done
+
+    - name: Verify frontend
+      if: steps.check-docker.outputs.need_restart == 'true'
+      run: |
+        echo "Checking frontend (port 4110)..."
+        for i in $(seq 1 15); do
+          if curl -sf http://localhost:4110/ > /dev/null 2>&1; then
+            echo "Frontend is serving!"
+            break
+          fi
+          if [ $i -eq 15 ]; then
+            echo "::error::Frontend verification timeout"
+            docker compose logs llmops-frontend --tail=40
+            exit 1
+          fi
+          sleep 2
+        done
+
+    - name: Smoke-check inventory poller
+      if: steps.check-docker.outputs.need_restart == 'true'
+      run: |
+        # lifespan 시작 시 1회 폴링 발동 → 잠시 대기 후 row 확인
+        sleep 4
+        docker compose logs llmops-backend --tail=30 | grep -E "Ollama poller|MLX scanner|Scheduler" || true
+
+    - name: Deployment summary
+      if: steps.check-docker.outputs.need_restart == 'true'
+      run: |
+        echo "=========================================="
+        echo "  LLMOps Deployment Complete"
+        echo "=========================================="
+        echo "Frontend:  https://llmops.unmong.com"
+        echo "Backend:   http://localhost:9110"
+        echo "API Docs:  http://localhost:9110/docs"
+        echo ""
+        docker compose ps
+
+    - name: Skip Docker restart (docs/config only)
+      if: steps.check-docker.outputs.need_restart != 'true'
+      run: |
+        echo "=========================================="
+        echo "Docker restart SKIPPED"
+        echo "Only docs/config files were changed"
+        echo "=========================================="
+
+    - name: Cleanup old images
+      if: always()
+      run: docker image prune -f 2>/dev/null || true
