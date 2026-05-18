@@ -7,23 +7,47 @@ body {
   color: #e6e6e6;
 }
 
+a { color: #6ab0ff; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code {
+  background: #0a0c10;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.92em;
+}
+
 .app {
-  max-width: 920px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 24px;
 }
 
 header h1 {
   margin: 0 0 4px;
-  font-size: 28px;
+  font-size: 24px;
 }
 header .subtitle {
   margin: 0;
   color: #888;
+  font-size: 13px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.row-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 section {
-  margin-top: 32px;
+  margin-top: 24px;
   padding: 20px;
   background: #1a1d24;
   border-radius: 8px;
@@ -32,10 +56,10 @@ section {
 
 section h2 {
   margin: 0 0 12px;
-  font-size: 16px;
+  font-size: 15px;
   color: #aab;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
 
 pre {
@@ -44,14 +68,64 @@ pre {
   border-radius: 4px;
   overflow-x: auto;
   font-size: 13px;
-}
-
-.error {
-  color: #ff6b6b;
-}
-
-ul {
   margin: 0;
-  padding-left: 20px;
-  line-height: 1.8;
 }
+
+.error { color: #ff6b6b; border-left: 3px solid #ff6b6b; padding-left: 10px; }
+.ok    { color: #6effb3; border-left: 3px solid #6effb3; padding-left: 10px; }
+.muted { color: #888; }
+.small { font-size: 12px; }
+.num   { text-align: right; font-variant-numeric: tabular-nums; }
+
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: #888;
+}
+
+ul { margin: 0; padding-left: 20px; line-height: 1.9; }
+
+dl.kv {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  row-gap: 6px;
+  column-gap: 12px;
+  margin-top: 20px;
+  font-size: 13px;
+}
+dl.kv dt { color: #888; }
+dl.kv dd { margin: 0; }
+
+button {
+  background: #2a4d8a;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+button:hover { background: #3460ad; }
+button:disabled { background: #2a2e38; color: #666; cursor: not-allowed; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table th, table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #2a2e38;
+  text-align: left;
+}
+table th {
+  color: #aab;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: #14171d;
+  position: sticky;
+  top: 0;
+}
+table tbody tr:hover { background: #14171d; }
