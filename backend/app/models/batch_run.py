@@ -6,6 +6,8 @@
 from datetime import datetime
 from typing import Any
 
+from decimal import Decimal
+
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
@@ -13,6 +15,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -58,6 +61,11 @@ class BatchRunStage(Base):
     __tablename__ = "batch_run_stages"
     __table_args__ = (
         Index("ix_batch_run_stages_model", "model"),
+        CheckConstraint(
+            "quality_judge IS NULL OR quality_judge IN "
+            "('human','llm-judge','ground-truth','heuristic','user-feedback')",
+            name="ck_batch_run_stages_quality_judge",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -70,5 +78,10 @@ class BatchRunStage(Base):
     tokens_in: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_out: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # quality (표준 v0.2.0 — BATCH_RUN_REPORTING §2-α). NULL = 측정 안 됨 (0 과 구별)
+    quality_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
+    quality_judge: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    quality_raw: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     batch_run: Mapped["BatchRun"] = relationship(back_populates="stages")

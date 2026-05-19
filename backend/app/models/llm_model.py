@@ -4,6 +4,7 @@
 3계층 데이터: Layer 1 (자동 수집) + Layer 2 (수동 보강) + Layer 3 (파생 집계, 별도)
 """
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Index,
+    Numeric,
     PrimaryKeyConstraint,
     Text,
     func,
@@ -28,7 +30,14 @@ class LlmModel(Base):
     __tablename__ = "llm_models"
     __table_args__ = (
         PrimaryKeyConstraint("model_id", "provider", "host", name="pk_llm_models"),
-        CheckConstraint("provider IN ('ollama','mlx','gguf')", name="ck_llm_models_provider"),
+        CheckConstraint(
+            "provider IN ('ollama','mlx','gguf','claude-api','openai-api','gemini-api')",
+            name="ck_llm_models_provider",
+        ),
+        CheckConstraint(
+            "pricing_tier IN ('free-local','paid-api')",
+            name="ck_llm_models_pricing_tier",
+        ),
         Index("ix_llm_models_active", "provider", postgresql_where=text("deprecated_at IS NULL")),
         Index("ix_llm_models_family", "family"),
     )
@@ -54,6 +63,11 @@ class LlmModel(Base):
     deprecated_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     replaced_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Cost / pricing (표준 v0.2.0 — paid-api 비교 분석용)
+    pricing_tier: Mapped[str] = mapped_column(Text, nullable=False, default="free-local")
+    cost_per_1m_tokens_in: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    cost_per_1m_tokens_out: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
 
     # Bookkeeping
     first_seen_at: Mapped[datetime] = mapped_column(
