@@ -29,6 +29,33 @@
 - 도메인: `https://llmops.unmong.com/` (게이트웨이)
 - `https://도메인:포트` 형식 금지 — [DOMAIN_MANAGEMENT.md](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/infrastructure/DOMAIN_MANAGEMENT.md) 준수
 
+## Git Workflow — `main` 기본 작업 / `prod` 배포 트리거
+
+표준: [`MAIN_PROD_WORKFLOW.md`](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/git/MAIN_PROD_WORKFLOW.md), [`PROD_TO_MAIN_AUTO_SYNC.md`](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/git/PROD_TO_MAIN_AUTO_SYNC.md)
+
+| 브랜치 | 역할 |
+|---|---|
+| `main` | **코드 원본 (SSoT)** — 모든 구현은 여기서 시작 |
+| `prod` | **OrbStack 배포 트리거** — `main → prod` merge only, 직접 commit 금지 |
+
+### 표준 순서 (사용자가 "prod push" / "배포" 요청 시)
+
+```bash
+# 1) main 에서 작업 & push
+git checkout main && git pull --rebase origin main
+# ... 구현 & commit ...
+git push origin main
+
+# 2) prod 에 merge (자동 배포 트리거)
+git checkout prod && git pull --rebase origin prod
+git merge main && git push origin prod
+git checkout main    # 다시 main 으로 복귀
+```
+
+- `.github/workflows/deploy-macos.yml` — prod push → OrbStack 배포
+- `.github/workflows/sync-prod-to-main.yml` — prod-only commit 발생 시 main 자동 역동기화 (drift 안전망)
+- 예외 케이스 (실수로 prod 에 작업한 경우) 는 표준 문서 §3 참조
+
 ## 데이터 모델 표준 (수정 시 반드시 참조)
 
 | 표준 | 위치 |
