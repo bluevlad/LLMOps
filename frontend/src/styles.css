@@ -129,3 +129,102 @@ table th {
   top: 0;
 }
 table tbody tr:hover { background: #14171d; }
+
+/* --- Health dot (헤더) --- */
+.health-dot { font-size: 14px; line-height: 1; }
+.health-dot.ok  { color: #6effb3; }
+.health-dot.err { color: #ff6b6b; }
+
+/* --- KPI row --- */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 720px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi-card {
+  background: #14171d;
+  border: 1px solid #2a2e38;
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+.kpi-label {
+  color: #888;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.kpi-value {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #e6e6e6;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-value.sm { font-size: 18px; }
+.kpi-sub {
+  margin-top: 4px;
+  color: #888;
+  font-size: 12px;
+}
+
+/* --- Phase grid --- */
+.phase-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 980px) { .phase-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .phase-grid { grid-template-columns: 1fr; } }
+
+.phase-card {
+  background: #14171d;
+  border: 1px solid #2a2e38;
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.phase-card:hover { border-color: #3a4050; transform: translateY(-1px); }
+.phase-card.phase-done   { border-left: 3px solid #6effb3; }
+.phase-card.phase-active { border-left: 3px solid #ffcb6b; }
+.phase-card.phase-wait   { border-left: 3px solid #555; }
+
+.phase-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.phase-code {
+  color: #6ab0ff;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: -apple-system, "SF Mono", monospace;
+}
+.phase-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e6e6e6;
+}
+.phase-summary {
+  color: #b8bcc6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.phase-deliverable { margin-top: auto; }
+.phase-action { margin-top: 8px; font-size: 13px; }
+
+.status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.status-badge.badge-done   { color: #6effb3; border-color: #2c5c45; background: #0e1e17; }
+.status-badge.badge-active { color: #ffcb6b; border-color: #5c4b2c; background: #1e1810; }
+.status-badge.badge-wait   { color: #888;    border-color: #333;    background: #14171d; }

@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     poller_ollama_interval_seconds: int = Field(default=600)
     poller_mlx_interval_seconds: int = Field(default=3600)
 
+    # --- Paid LLM API keys (Phase 2 (γ) — 무료 vs 유료 비교 실험) ---
+    anthropic_api_key: str = Field(default="")
+    openai_api_key: str = Field(default="")
+    gemini_api_key: str = Field(default="")
+
     @property
     def backend_cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.backend_cors_origins.split(",") if o.strip()]
