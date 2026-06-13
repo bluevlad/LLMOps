@@ -18,11 +18,21 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.core.config import settings
 from app.database.session import AsyncSessionLocal
 from app.models.batch_run import BatchRun, BatchRunStage
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/batch-runs", tags=["batch-runs"])
+
+
+def _truncate(text: str | None, limit: int) -> tuple[str | None, bool]:
+    """서버측 방어 truncation. (잘린본문, 잘림여부) 반환."""
+    if text is None:
+        return None, False
+    if len(text) > limit:
+        return text[:limit], True
+    return text, False
 
 
 def _load_ingest_keys() -> dict[str, str]:
@@ -37,12 +47,33 @@ def _load_ingest_keys() -> dict[str, str]:
         return {}
 
 
+class QualityIn(BaseModel):
+    score: float | None = None
+    judge: str | None = None
+    judge_model: str | None = None
+    dimensions: dict[str, float] | None = None
+    note: str | None = None
+
+
 class StageIn(BaseModel):
     name: str | None = None
     model: str | None = None
     tokens_in: int | None = None
     tokens_out: int | None = None
     duration_ms: int | None = None
+    # quality (표준 v0.2.0 §2-α) — inline 평가
+    quality: QualityIn | None = None
+    # content capture (표준 v0.3.0 §2-β) — consumer 가 샘플링/truncate 후 보고
+    prompt: str | None = None
+    response: str | None = None
+    params: dict[str, Any] | None = None
+    ok: bool | None = None
+    retries: int | None = None
+    error: str | None = None
+    prompt_chars: int | None = None
+    response_chars: int | None = None
+    content_truncated: bool | None = None
+    content_sampled: bool | None = None
 
 
 class BatchRunIn(BaseModel):
@@ -55,6 +86,51 @@ class BatchRunIn(BaseModel):
     metrics: dict[str, Any] | None = None
     error: dict[str, Any] | None = None
     extra: dict[str, Any] | None = None
+
+
+def _build_stage(order: int, s: "StageIn") -> BatchRunStage:
+    """StageIn → BatchRunStage. content 는 서버측 max_chars 로 방어 truncate,
+    quality inline 평가는 typed 컬럼 + raw 로 분해 저장."""
+    limit = settings.batch_content_max_chars
+    prompt, p_trunc = _truncate(s.prompt, limit)
+    response, r_trunc = _truncate(s.response, limit)
+
+    # 원본 길이: consumer 가 보냈으면 그 값(truncate 전 실제 길이), 없으면 수신값 기준
+    prompt_chars = s.prompt_chars if s.prompt_chars is not None else (
+        len(s.prompt) if s.prompt is not None else None
+    )
+    response_chars = s.response_chars if s.response_chars is not None else (
+        len(s.response) if s.response is not None else None
+    )
+    truncated = bool(s.content_truncated) or p_trunc or r_trunc
+
+    q = s.quality
+    quality_score = q.score if q else None
+    quality_judge = q.judge if q else None
+    # judge_model/dimensions/note 는 raw 로 보존 (재현·비교 분석용)
+    quality_raw = q.model_dump(exclude_none=True) if q else None
+
+    return BatchRunStage(
+        stage_order=order,
+        name=s.name,
+        model=s.model,
+        tokens_in=s.tokens_in,
+        tokens_out=s.tokens_out,
+        duration_ms=s.duration_ms,
+        quality_score=quality_score,
+        quality_judge=quality_judge,
+        quality_raw=quality_raw,
+        prompt=prompt,
+        response=response,
+        params=s.params,
+        ok=s.ok,
+        retries=s.retries,
+        stage_error=s.error,
+        prompt_chars=prompt_chars,
+        response_chars=response_chars,
+        content_truncated=truncated if (s.prompt or s.response) else None,
+        content_sampled=s.content_sampled,
+    )
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
@@ -96,15 +172,7 @@ async def receive_batch_run(
             extra=body.extra,
         )
         run.stages = [
-            BatchRunStage(
-                stage_order=i,
-                name=s.name,
-                model=s.model,
-                tokens_in=s.tokens_in,
-                tokens_out=s.tokens_out,
-                duration_ms=s.duration_ms,
-            )
-            for i, s in enumerate(body.stages)
+            _build_stage(i, s) for i, s in enumerate(body.stages)
         ]
         db.add(run)
         try:
