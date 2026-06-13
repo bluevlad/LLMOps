@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="")
     gemini_api_key: str = Field(default="")
 
+    # --- Batch run content capture (표준 v0.3.0 §2-β) ---
+    # 샘플링 결정은 consumer(클라이언트)가 한다. 서버는 받은 prompt/response 본문에
+    # 대해 방어적 truncation 만 강제 — consumer 오작동 시 저장소 폭주 방지.
+    batch_content_max_chars: int = Field(default=8000)
+
     @property
     def backend_cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.backend_cors_origins.split(",") if o.strip()]

@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -83,5 +84,19 @@ class BatchRunStage(Base):
     quality_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
     quality_judge: Mapped[str | None] = mapped_column(String(32), nullable=True)
     quality_raw: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+
+    # content capture (표준 v0.3.0 — BATCH_RUN_REPORTING §2-β, 샘플링/제한 저장).
+    # 샘플링 결정은 consumer 가 함. content_sampled=False/NULL 이면 본문 미캡처
+    # (= "내용 없음" 이 아니라 "이 호출은 샘플로 선택되지 않음" 을 의미).
+    prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    response: Mapped[str | None] = mapped_column(Text, nullable=True)
+    params: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    retries: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    stage_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prompt_chars: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_chars: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content_truncated: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    content_sampled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     batch_run: Mapped["BatchRun"] = relationship(back_populates="stages")
