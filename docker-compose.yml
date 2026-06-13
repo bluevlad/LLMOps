@@ -32,6 +32,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # Vite 빌드 타임 주입 (import.meta.env.VITE_*). 값은 .env 에서 읽음.
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     image: llmops-frontend:latest
     container_name: llmops-frontend
     restart: unless-stopped
