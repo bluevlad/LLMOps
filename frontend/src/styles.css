@@ -228,3 +228,81 @@ table tbody tr:hover { background: #14171d; }
 .status-badge.badge-done   { color: #6effb3; border-color: #2c5c45; background: #0e1e17; }
 .status-badge.badge-active { color: #ffcb6b; border-color: #5c4b2c; background: #1e1810; }
 .status-badge.badge-wait   { color: #888;    border-color: #333;    background: #14171d; }
+
+/* --- Pipeline Flow Map --- */
+.flow-node {
+  background: #1a1d24;
+  border: 1px solid #2a2e38;
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  width: 224px;
+}
+.flow-node.flow-active  { border-left-color: #6effb3; }
+.flow-node.flow-pending { border-left-color: #ffcb6b; }
+.flow-node.flow-planned { border-left-color: #555; border-style: dashed; opacity: 0.75; }
+.flow-node-link { text-decoration: none; }
+.flow-node-link:hover { text-decoration: none; }
+.flow-node-link .flow-node:hover { border-color: #3a4050; }
+.flow-node-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.flow-node-label { font-weight: 600; color: #e6e6e6; }
+.flow-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.flow-badge-active  { color: #6effb3; background: #0e1e17; }
+.flow-badge-pending { color: #ffcb6b; background: #1e1810; }
+.flow-badge-planned { color: #888;    background: #14171d; }
+.flow-node-desc { color: #888; margin-top: 4px; line-height: 1.4; }
+.flow-node-stats { margin-top: 6px; color: #b8bcc6; font-variant-numeric: tabular-nums; }
+.ok-text   { color: #6effb3; }
+.warn-text { color: #ffcb6b; }
+.err-text  { color: #ff6b6b; }
+.flow-handle { opacity: 0; }
+
+.react-flow__node.flow-layer-header {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #aab;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+  pointer-events: none;
+}
+.react-flow__node.flow-layer-header .react-flow__handle { display: none; }
+
+.flow-legend {
+  display: flex;
+  gap: 18px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.flow-legend .dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+.dot-active  { background: #6effb3; }
+.dot-pending { background: #ffcb6b; }
+.dot-planned { background: #555; }
+.dash-feedback {
+  display: inline-block;
+  width: 22px; height: 0;
+  border-top: 2px dashed #9085e9;
+  margin-right: 5px;
+  vertical-align: 3px;
+}

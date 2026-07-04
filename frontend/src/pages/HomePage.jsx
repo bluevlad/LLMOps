@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+
+// react-flow 번들이 무거워서 Flow Map 만 코드 분할
+const PipelineFlow = lazy(() => import('../components/PipelineFlow.jsx'));
 
 const SUNSET_DATE = '2026-11-18';
 
@@ -130,6 +133,19 @@ export default function HomePage() {
             <div className="kpi-sub">{SUNSET_DATE} 평가 (KPI: 인사이트 산출량)</div>
           </div>
         </div>
+      </section>
+
+      <section>
+        <div className="row" style={{ marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>파이프라인 Flow Map (최근 30일)</h2>
+          <div className="row-end small">
+            <Link to="/usage">사용량 통계 →</Link>
+            <Link to="/comparisons">교사후보 평가 →</Link>
+          </div>
+        </div>
+        <Suspense fallback={<div className="loading">파이프라인 불러오는 중…</div>}>
+          <PipelineFlow />
+        </Suspense>
       </section>
 
       <section>
