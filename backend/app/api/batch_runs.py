@@ -1,26 +1,30 @@
-"""POST /api/batch-runs — consumer 서비스에서 LLM 실행 결과 수신.
+"""/api/batch-runs — consumer 서비스에서 LLM 실행 결과 수신 + 조회.
 
 표준: standards/observability/BATCH_RUN_REPORTING.md
-- 202 Accepted 즉시 ACK (fire-and-forget 서버측 보장)
-- X-LLMOps-Key + X-Consumer-Id 검증
-- 같은 (consumer_id, run_id) 재전송은 idempotent (409 → 무시 가능)
+- POST: 202 Accepted 즉시 ACK (fire-and-forget 서버측 보장)
+  - X-LLMOps-Key + X-Consumer-Id 검증
+  - 같은 (consumer_id, run_id) 재전송은 idempotent (409 → 무시 가능)
+- GET: 대시보드용 읽기 (JWT 인증) — 목록 + consumer 별 집계
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.database.session import AsyncSessionLocal
+from app.core.security import get_current_user
+from app.database.session import AsyncSessionLocal, get_db
 from app.models.batch_run import BatchRun, BatchRunStage
+from app.models.user import LlmopsUser
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/batch-runs", tags=["batch-runs"])
@@ -182,3 +186,128 @@ async def receive_batch_run(
             await db.rollback()
             return {"status": "duplicate"}
         return {"status": "accepted", "id": str(run.id)}
+
+
+# ---------------------------------------------------------------------------
+# GET — 대시보드 읽기 API (Phase A). ingest 와 달리 JWT 인증.
+# ---------------------------------------------------------------------------
+
+
+class BatchRunOut(BaseModel):
+    id: int
+    consumer_id: str
+    run_id: str
+    started_at: datetime
+    ended_at: datetime | None
+    status: str
+    received_at: datetime
+    stage_count: int
+    tokens_in: int | None
+    tokens_out: int | None
+    avg_quality: float | None
+    models: list[str]
+
+
+class ConsumerSummaryOut(BaseModel):
+    consumer_id: str
+    runs_total: int
+    runs_success: int
+    runs_failure: int
+    runs_partial: int
+    last_run_at: datetime | None
+    tokens_in: int | None
+    tokens_out: int | None
+    avg_quality: float | None
+    models: list[str]
+
+
+@router.get("", response_model=list[BatchRunOut])
+async def list_batch_runs(
+    consumer_id: str | None = None,
+    run_status: str | None = Query(None, pattern="^(success|failure|partial)$"),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    _user: LlmopsUser = Depends(get_current_user),
+) -> list[BatchRunOut]:
+    stmt = select(BatchRun).order_by(BatchRun.started_at.desc()).limit(limit)
+    if consumer_id:
+        stmt = stmt.where(BatchRun.consumer_id == consumer_id)
+    if run_status:
+        stmt = stmt.where(BatchRun.status == run_status)
+    runs = (await db.execute(stmt)).scalars().all()
+
+    out: list[BatchRunOut] = []
+    for r in runs:
+        tokens_in = [s.tokens_in for s in r.stages if s.tokens_in is not None]
+        tokens_out = [s.tokens_out for s in r.stages if s.tokens_out is not None]
+        qualities = [float(s.quality_score) for s in r.stages if s.quality_score is not None]
+        out.append(BatchRunOut(
+            id=r.id,
+            consumer_id=r.consumer_id,
+            run_id=r.run_id,
+            started_at=r.started_at,
+            ended_at=r.ended_at,
+            status=r.status,
+            received_at=r.received_at,
+            stage_count=len(r.stages),
+            tokens_in=sum(tokens_in) if tokens_in else None,
+            tokens_out=sum(tokens_out) if tokens_out else None,
+            avg_quality=round(sum(qualities) / len(qualities), 3) if qualities else None,
+            models=sorted({s.model for s in r.stages if s.model}),
+        ))
+    return out
+
+
+@router.get("/summary", response_model=list[ConsumerSummaryOut])
+async def batch_runs_summary(
+    days: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    _user: LlmopsUser = Depends(get_current_user),
+) -> list[ConsumerSummaryOut]:
+    """consumer 별 최근 N일 실행 집계 — 파이프라인 상태 오버레이용."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    run_rows = (await db.execute(
+        select(
+            BatchRun.consumer_id,
+            func.count(BatchRun.id),
+            func.count(BatchRun.id).filter(BatchRun.status == "success"),
+            func.count(BatchRun.id).filter(BatchRun.status == "failure"),
+            func.count(BatchRun.id).filter(BatchRun.status == "partial"),
+            func.max(BatchRun.started_at),
+        )
+        .where(BatchRun.started_at >= since)
+        .group_by(BatchRun.consumer_id)
+    )).all()
+
+    stage_rows = (await db.execute(
+        select(
+            BatchRun.consumer_id,
+            func.sum(BatchRunStage.tokens_in),
+            func.sum(BatchRunStage.tokens_out),
+            func.avg(BatchRunStage.quality_score),
+            func.array_agg(BatchRunStage.model.distinct()),
+        )
+        .join(BatchRun, BatchRunStage.batch_run_id == BatchRun.id)
+        .where(BatchRun.started_at >= since)
+        .group_by(BatchRun.consumer_id)
+    )).all()
+    stage_by_consumer = {row[0]: row for row in stage_rows}
+
+    out: list[ConsumerSummaryOut] = []
+    for consumer, total, ok, fail, partial, last_at in run_rows:
+        st = stage_by_consumer.get(consumer)
+        out.append(ConsumerSummaryOut(
+            consumer_id=consumer,
+            runs_total=total,
+            runs_success=ok,
+            runs_failure=fail,
+            runs_partial=partial,
+            last_run_at=last_at,
+            tokens_in=int(st[1]) if st and st[1] is not None else None,
+            tokens_out=int(st[2]) if st and st[2] is not None else None,
+            avg_quality=round(float(st[3]), 3) if st and st[3] is not None else None,
+            models=sorted(m for m in (st[4] or []) if m) if st else [],
+        ))
+    out.sort(key=lambda c: c.consumer_id)
+    return out

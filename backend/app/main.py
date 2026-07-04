@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.batch_runs import router as batch_runs_router
+from app.api.comparisons import router as comparisons_router
 from app.api.models import router as models_router
 from app.core.config import settings
 from app.jobs.scheduler import start_scheduler, stop_scheduler
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api")
     app.include_router(models_router, prefix="/api")
     app.include_router(batch_runs_router, prefix="/api")
+    app.include_router(comparisons_router, prefix="/api")
 
     return app
 
