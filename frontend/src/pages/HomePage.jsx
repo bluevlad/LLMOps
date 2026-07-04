@@ -34,13 +34,9 @@ const PHASES = [
     code: 'Phase 2 (γ)',
     title: '무료 vs 유료 비교',
     status: 'active',
-    summary: 'CLI 평행 실행 + LLM-as-judge → comparison_runs (UI 대기)',
-    deliverable: 'scripts/run_comparison.py, scripts/generate_report.py',
-    action: {
-      type: 'external',
-      to: 'https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/services/llmops/PHASE_2_DESIGN.md',
-      label: '설계 문서 →',
-    },
+    summary: 'CLI 평행 실행 + LLM-as-judge → comparison_runs + 스코어보드 UI',
+    deliverable: 'scripts/run_comparison.py, /comparisons 화면',
+    action: { type: 'internal', to: '/comparisons', label: '교사후보 평가 열기 →' },
   },
   {
     id: 'p3',
@@ -83,10 +79,12 @@ export default function HomePage() {
   const { user, logout } = useAuth();
   const [models, setModels] = useState(null);
   const [health, setHealth] = useState(null);
+  const [comparisons, setComparisons] = useState(null);
 
   useEffect(() => {
     api.get('/api/health').then((r) => setHealth(r.data)).catch(() => setHealth({ status: 'error' }));
     api.get('/api/models').then((r) => setModels(r.data)).catch(() => setModels([]));
+    api.get('/api/comparisons').then((r) => setComparisons(r.data)).catch(() => setComparisons([]));
   }, []);
 
   const sunsetDday = useMemo(() => daysUntil(SUNSET_DATE), []);
@@ -118,8 +116,8 @@ export default function HomePage() {
           </div>
           <div className="kpi-card">
             <div className="kpi-label">비교 실험</div>
-            <div className="kpi-value">—</div>
-            <div className="kpi-sub">CLI 산출 (UI 미구현)</div>
+            <div className="kpi-value">{Array.isArray(comparisons) ? comparisons.length : '—'}</div>
+            <div className="kpi-sub"><Link to="/comparisons">교사후보 평가 →</Link></div>
           </div>
           <div className="kpi-card">
             <div className="kpi-label">진행 Phase</div>
