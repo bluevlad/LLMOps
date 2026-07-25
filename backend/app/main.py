@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.batch_runs import router as batch_runs_router
 from app.api.comparisons import router as comparisons_router
+from app.api.golden_set import router as golden_set_router
 from app.api.models import router as models_router
 from app.api.pipeline import router as pipeline_router
 from app.api.usage import router as usage_router
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(comparisons_router, prefix="/api")
     app.include_router(usage_router, prefix="/api")
     app.include_router(pipeline_router, prefix="/api")
+    app.include_router(golden_set_router, prefix="/api")
 
     return app
 

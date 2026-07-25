@@ -140,6 +140,7 @@ export default function HomePage() {
           <h2 style={{ margin: 0 }}>파이프라인 Flow Map (최근 30일)</h2>
           <div className="row-end small">
             <Link to="/usage">사용량 통계 →</Link>
+            <Link to="/golden-set">골든셋 큐레이션 →</Link>
             <Link to="/comparisons">교사후보 평가 →</Link>
           </div>
         </div>

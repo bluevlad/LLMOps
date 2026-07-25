@@ -7,9 +7,10 @@ import {
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
-// 다크 서피스용 카테고리 팔레트 슬롯 1·2 (토큰 in/out 두 시리즈)
+// 다크 서피스용 카테고리 팔레트 슬롯 1·2·3 (validate_palette dark 통과)
 const C_IN = '#3987e5';
 const C_OUT = '#199e70';
+const C_GOLD = '#9a5fe0';
 const INK_MUTED = '#898781';
 const GRID = '#2a2e38';
 
@@ -37,15 +38,27 @@ export default function UsagePage() {
   const { user, logout } = useAuth();
   const [rangeIdx, setRangeIdx] = useState(0);
   const [data, setData] = useState(null);
+  const [accum, setAccum] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const { days, granularity } = RANGES[rangeIdx];
     setData(null);
+    setAccum(null);
     api.get('/api/usage', { params: { days, granularity } })
       .then((r) => setData(r.data))
       .catch((e) => setError(e.response?.data?.detail || e.message));
+    api.get('/api/usage/accumulation', { params: { days, granularity } })
+      .then((r) => setAccum(r.data))
+      .catch(() => setAccum(null)); // 축적 데이터는 선택적 — 실패해도 페이지 유지
   }, [rangeIdx]);
+
+  const accumSeries = useMemo(() => {
+    if (!accum) return [];
+    return accum.series.map((b) => ({ bucket: b.bucket, ...b.values }));
+  }, [accum]);
+  const hasAccum = accum && accum.series.length > 0
+    && Object.values(accum.totals).some((v) => v > 0);
 
   const totals = useMemo(() => {
     if (!data) return null;
@@ -156,6 +169,59 @@ export default function UsagePage() {
           </section>
 
           <section>
+            <h2>수집·축적 추이 ({data.granularity === 'day' ? '일별' : '월별'})</h2>
+            {!hasAccum ? (
+              <p className="muted">
+                기간 내 축적 metrics 없음 — consumer 가 §2-γ 키(items_ingested, corpus_added,
+                golden_added 등)를 보고하면 채워집니다.
+              </p>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={accumSeries} margin={{ top: 8, right: 16, left: -16, bottom: 0 }} barGap={2}>
+                    <CartesianGrid stroke={GRID} vertical={false} />
+                    <XAxis dataKey="bucket" tick={{ fill: INK_MUTED, fontSize: 11 }} stroke={GRID} />
+                    <YAxis tick={{ fill: INK_MUTED, fontSize: 11 }} stroke={GRID} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="items_ingested" name="신규 수집" fill={C_IN} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="corpus_added" name="RAG corpus 축적" fill={C_OUT} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="golden_added" name="골든셋 확정" fill={C_GOLD} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <table style={{ marginTop: 12 }}>
+                  <thead>
+                    <tr>
+                      <th>Consumer</th>
+                      <th className="num">크롤</th>
+                      <th className="num">신규 수집</th>
+                      <th className="num">corpus 축적</th>
+                      <th className="num">골든 후보</th>
+                      <th className="num">골든 확정</th>
+                      <th className="num">승인 / 반려 / 보류</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accum.by_consumer.map((c) => (
+                      <tr key={c.consumer_id}>
+                        <td><code>{c.consumer_id}</code></td>
+                        <td className="num">{fmtNum(c.values.items_crawled)}</td>
+                        <td className="num">{fmtNum(c.values.items_ingested)}</td>
+                        <td className="num">{fmtNum(c.values.corpus_added)}</td>
+                        <td className="num">{fmtNum(c.values.golden_candidates)}</td>
+                        <td className="num">{fmtNum(c.values.golden_added)}</td>
+                        <td className="num">
+                          {c.values.review_approved} / {c.values.review_rejected} / {c.values.review_abstained}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </section>
+
+          <section>
             <h2>Consumer 별 사용량</h2>
             <table>
               <thead>
@@ -181,7 +247,8 @@ export default function UsagePage() {
             </table>
             <p className="muted small" style={{ marginTop: 8 }}>
               토큰이 0인 consumer 는 계측 미비 (AllergyInsight 챗 = duration 만 보고,
-              SkillRadar = 미연동). 계측 보강 후 채워집니다.
+              kin-pipeline = stage 단위 집계라 토큰 생략). SkillRadar 는 2026-07-25 부터
+              실측 토큰 보고.
             </p>
           </section>
         </>

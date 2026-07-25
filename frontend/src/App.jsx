@@ -9,6 +9,7 @@ import ModelsPage from './pages/ModelsPage.jsx';
 // recharts / react-flow 가 무거워서 차트 페이지는 코드 분할
 const ComparisonsPage = lazy(() => import('./pages/ComparisonsPage.jsx'));
 const UsagePage = lazy(() => import('./pages/UsagePage.jsx'));
+const GoldenSetPage = lazy(() => import('./pages/GoldenSetPage.jsx'));
 
 export default function App() {
   return (
@@ -23,6 +24,16 @@ export default function App() {
             <RequireAuth>
               <Suspense fallback={<div className="loading">불러오는 중…</div>}>
                 <UsagePage />
+              </Suspense>
+            </RequireAuth>
+          )}
+        />
+        <Route
+          path="/golden-set"
+          element={(
+            <RequireAuth>
+              <Suspense fallback={<div className="loading">불러오는 중…</div>}>
+                <GoldenSetPage />
               </Suspense>
             </RequireAuth>
           )}
