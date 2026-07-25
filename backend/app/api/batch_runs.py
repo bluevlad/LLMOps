@@ -258,13 +258,8 @@ async def list_batch_runs(
     return out
 
 
-@router.get("/summary", response_model=list[ConsumerSummaryOut])
-async def batch_runs_summary(
-    days: int = Query(30, ge=1, le=365),
-    db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(get_current_user),
-) -> list[ConsumerSummaryOut]:
-    """consumer 별 최근 N일 실행 집계 — 파이프라인 상태 오버레이용."""
+async def consumer_summaries(db: AsyncSession, days: int) -> list[ConsumerSummaryOut]:
+    """consumer 별 최근 N일 실행 집계 — /batch-runs/summary 와 /pipeline/flow 공용."""
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
     run_rows = (await db.execute(
@@ -311,3 +306,12 @@ async def batch_runs_summary(
         ))
     out.sort(key=lambda c: c.consumer_id)
     return out
+
+
+@router.get("/summary", response_model=list[ConsumerSummaryOut])
+async def batch_runs_summary(
+    days: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    _user: LlmopsUser = Depends(get_current_user),
+) -> list[ConsumerSummaryOut]:
+    return await consumer_summaries(db, days)

@@ -6,8 +6,10 @@ import HomePage from './pages/HomePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ModelsPage from './pages/ModelsPage.jsx';
 
-// recharts 가 무거워서 스코어보드만 코드 분할
+// recharts / react-flow 가 무거워서 차트 페이지는 코드 분할
 const ComparisonsPage = lazy(() => import('./pages/ComparisonsPage.jsx'));
+const UsagePage = lazy(() => import('./pages/UsagePage.jsx'));
+const GoldenSetPage = lazy(() => import('./pages/GoldenSetPage.jsx'));
 
 export default function App() {
   return (
@@ -16,6 +18,26 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
         <Route path="/models" element={<RequireAuth><ModelsPage /></RequireAuth>} />
+        <Route
+          path="/usage"
+          element={(
+            <RequireAuth>
+              <Suspense fallback={<div className="loading">불러오는 중…</div>}>
+                <UsagePage />
+              </Suspense>
+            </RequireAuth>
+          )}
+        />
+        <Route
+          path="/golden-set"
+          element={(
+            <RequireAuth>
+              <Suspense fallback={<div className="loading">불러오는 중…</div>}>
+                <GoldenSetPage />
+              </Suspense>
+            </RequireAuth>
+          )}
+        />
         <Route
           path="/comparisons"
           element={(
