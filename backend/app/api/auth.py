@@ -3,7 +3,8 @@
 흐름:
 1. 프런트가 Google Identity Services 로 credential(JWT) 획득
 2. POST /api/auth/google/verify { credential } → 백엔드에서 ID token 검증
-3. llmops_users upsert (이메일 기준). 첫 가입자는 llmops_admin (P0 부트스트랩 정책)
+3. llmops_users upsert (이메일 기준). 역할은 LLMOPS_ADMIN_EMAILS allowlist 로 결정 —
+   목록 외 계정은 llmops_guest (데이터 접근 불가, 로그인 이력만 기록)
 4. LLMOps 자체 JWT 발급 후 반환
 """
 from __future__ import annotations
@@ -12,12 +13,13 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
     create_access_token,
     get_current_user,
+    resolve_role,
     verify_google_id_token,
 )
 from app.database.session import get_db
@@ -54,37 +56,40 @@ async def google_verify(
     google_sub = idinfo["sub"]
     name = idinfo.get("name")
 
+    role = resolve_role(email)
+
     user = (
         await db.execute(select(LlmopsUser).where(LlmopsUser.email == email))
     ).scalar_one_or_none()
 
     if user is None:
-        # P0 부트스트랩: 첫 가입자는 admin, 이후는 viewer
-        total = (await db.execute(select(func.count()).select_from(LlmopsUser))).scalar_one()
-        initial_role = "llmops_admin" if total == 0 else "llmops_viewer"
-
         user = LlmopsUser(
             email=email,
             name=name,
             google_sub=google_sub,
-            role=initial_role,
+            role=role,
             last_login_at=datetime.now(timezone.utc),
         )
         db.add(user)
         await db.flush()
-        db.add(LlmopsAuditLog(
-            actor_id=user.id,
-            action="user.bootstrap",
-            target_type="llmops_user",
-            target_id=str(user.id),
-            payload={"email": email, "role": initial_role},
-        ))
     else:
         user.last_login_at = datetime.now(timezone.utc)
         if name and user.name != name:
             user.name = name
         if user.google_sub is None:
             user.google_sub = google_sub
+        # allowlist 가 역할의 SSoT — 로그인 시마다 재동기화 (기존 viewer 도 guest 로 강등)
+        if user.role != role:
+            user.role = role
+
+    # 로그인 이력 기록 (guest 포함 전체)
+    db.add(LlmopsAuditLog(
+        actor_id=user.id,
+        action="user.login",
+        target_type="llmops_user",
+        target_id=str(user.id),
+        payload={"email": email, "role": user.role},
+    ))
 
     await db.commit()
     await db.refresh(user)

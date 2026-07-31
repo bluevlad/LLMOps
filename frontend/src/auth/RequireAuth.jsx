@@ -9,6 +9,13 @@ export function RequireAuth({ children, adminOnly = false }) {
   if (!user) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
+  if (user.role === 'llmops_guest') {
+    return (
+      <div className="error">
+        접근 권한이 없습니다. 관리자에게 문의하세요. (로그인 계정: <code>{user.email}</code>)
+      </div>
+    );
+  }
   if (adminOnly && user.role !== 'llmops_admin') {
     return (
       <div className="error">

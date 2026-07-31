@@ -23,8 +23,8 @@ services:
       # Ollama 는 호스트(MacBook)에서 실행 → host.docker.internal 로 접근
       - "host.docker.internal:host-gateway"
     volumes:
-      # MLX 모델 디렉토리 read-only 마운트 (스캐너 input)
-      - /Users/rainend/.cache/huggingface:/host/.cache/huggingface:ro
+      # MLX 모델 디렉토리 read-only 마운트 (스캐너 input). 호스트 경로는 .env 의 HOST_HF_CACHE
+      - ${HOST_HF_CACHE:-~/.cache/huggingface}:/host/.cache/huggingface:ro
     networks:
       - database-network
 

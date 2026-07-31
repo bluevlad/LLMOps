@@ -19,7 +19,7 @@
 - **Backend**: Python 3.11+ + FastAPI + SQLAlchemy 2.0 (asyncpg)
 - **Frontend**: React 18 + Vite
 - **Database**: PostgreSQL 15 (공유 컨테이너) — DB `llmops`/`llmops_dev` (단일 DB)
-- **Auth**: Google OAuth 2.0 ID Token + JWT (LLMOps 자체 발급)
+- **Auth**: Google OAuth 2.0 ID Token + JWT (LLMOps 자체 발급) — `LLMOPS_ADMIN_EMAILS` allowlist 만 admin, 그 외 로그인은 `llmops_guest` (데이터 접근 불가, 로그인 이력만 기록)
 - **수집 대상**: Ollama REST (`/api/tags`), MLX 디렉토리 (`~/.cache/huggingface/`)
 
 ## 포트 / 도메인

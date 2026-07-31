@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user
+from app.core.security import require_member
 from app.database.session import get_db
 from app.models.llm_model import LlmModel
 from app.models.user import LlmopsUser
@@ -49,7 +49,7 @@ class RefreshResult(BaseModel):
 async def list_models(
     include_deprecated: bool = False,
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(get_current_user),
+    _user: LlmopsUser = Depends(require_member),
 ) -> list[ModelOut]:
     stmt = select(LlmModel)
     if not include_deprecated:
@@ -79,7 +79,7 @@ async def list_models(
 
 @router.post("/refresh", response_model=RefreshResult)
 async def refresh_inventory(
-    _user: LlmopsUser = Depends(get_current_user),
+    _user: LlmopsUser = Depends(require_member),
 ) -> RefreshResult:
     """수동 폴링 트리거 (정기 잡과 별개로 즉시 갱신)."""
     n_ollama = await ollama_poller.run_once()
