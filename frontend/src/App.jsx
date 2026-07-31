@@ -16,12 +16,12 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
-        <Route path="/models" element={<RequireAuth><ModelsPage /></RequireAuth>} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/models" element={<RequireAuth adminOnly><ModelsPage /></RequireAuth>} />
         <Route
           path="/usage"
           element={(
-            <RequireAuth>
+            <RequireAuth adminOnly>
               <Suspense fallback={<div className="loading">불러오는 중…</div>}>
                 <UsagePage />
               </Suspense>
@@ -31,7 +31,7 @@ export default function App() {
         <Route
           path="/golden-set"
           element={(
-            <RequireAuth>
+            <RequireAuth adminOnly>
               <Suspense fallback={<div className="loading">불러오는 중…</div>}>
                 <GoldenSetPage />
               </Suspense>
@@ -41,7 +41,7 @@ export default function App() {
         <Route
           path="/comparisons"
           element={(
-            <RequireAuth>
+            <RequireAuth adminOnly>
               <Suspense fallback={<div className="loading">불러오는 중…</div>}>
                 <ComparisonsPage />
               </Suspense>
