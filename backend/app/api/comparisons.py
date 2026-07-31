@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user
+from app.core.security import require_member
 from app.database.session import get_db
 from app.models.comparison import ComparisonRun
 from app.models.user import LlmopsUser
@@ -92,7 +92,7 @@ def _run_out(r: ComparisonRun) -> ComparisonRunOut:
 @router.get("", response_model=list[ComparisonRunOut])
 async def list_comparisons(
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(get_current_user),
+    _user: LlmopsUser = Depends(require_member),
 ) -> list[ComparisonRunOut]:
     stmt = select(ComparisonRun).order_by(ComparisonRun.started_at.desc())
     runs = (await db.execute(stmt)).scalars().all()
@@ -180,7 +180,7 @@ def build_detail(run: ComparisonRun) -> ComparisonDetailOut:
 async def get_comparison(
     comparison_id: int,
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(get_current_user),
+    _user: LlmopsUser = Depends(require_member),
 ) -> ComparisonDetailOut:
     run = (await db.execute(
         select(ComparisonRun).where(ComparisonRun.id == comparison_id)

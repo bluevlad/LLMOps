@@ -57,6 +57,9 @@ def scan_mlx_dirs(base: Path) -> list[dict[str, Any]]:
 
 
 async def run_once() -> int:
+    if not settings.mlx_model_dir:
+        logger.info("MLX_MODEL_DIR 미설정 — MLX 스캔 skip")
+        return 0
     base = Path(settings.mlx_model_dir)
     rows = scan_mlx_dirs(base)
     if not rows:

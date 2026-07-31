@@ -44,9 +44,12 @@ class Settings(BaseSettings):
     google_oauth_client_id: str = Field(default="")
     google_oauth_redirect_uri: str = Field(default="https://llmops.unmong.com/auth/callback")
 
+    # 관리자 이메일 allowlist (콤마 구분). 목록 외 로그인은 llmops_guest (데이터 접근 불가)
+    llmops_admin_emails: str = Field(default="")
+
     # --- LLM Sources (Phase 1b) ---
     ollama_base_url: str = Field(default="http://host.docker.internal:11434")
-    mlx_model_dir: str = Field(default="/Users/rainend/.cache/huggingface/hub")
+    mlx_model_dir: str = Field(default="")  # 미설정 시 MLX 스캔 skip. 실제 경로는 .env 로 주입
     poller_ollama_interval_seconds: int = Field(default=600)
     poller_mlx_interval_seconds: int = Field(default=3600)
 

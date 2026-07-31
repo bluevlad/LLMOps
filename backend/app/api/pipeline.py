@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.batch_runs import consumer_summaries
-from app.core.security import get_current_user
+from app.core.security import require_member
 from app.database.session import get_db
 from app.models.user import LlmopsUser
 
@@ -150,7 +150,7 @@ class FlowOut(BaseModel):
 async def pipeline_flow(
     days: int = Query(30, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(get_current_user),
+    _user: LlmopsUser = Depends(require_member),
 ) -> FlowOut:
     summaries = {s.consumer_id: s for s in await consumer_summaries(db, days)}
 

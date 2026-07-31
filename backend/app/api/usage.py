@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user
+from app.core.security import require_member
 from app.database.session import get_db
 from app.models.batch_run import BatchRun, BatchRunStage
 from app.models.user import LlmopsUser
@@ -53,7 +53,7 @@ async def usage_stats(
     granularity: str = Query("day", pattern="^(day|month)$"),
     consumer_id: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(get_current_user),
+    _user: LlmopsUser = Depends(require_member),
 ) -> UsageOut:
     since = datetime.now(timezone.utc) - timedelta(days=days)
     trunc = func.date_trunc(granularity, BatchRun.started_at)
@@ -179,7 +179,7 @@ async def accumulation_stats(
     granularity: str = Query("day", pattern="^(day|month)$"),
     consumer_id: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(get_current_user),
+    _user: LlmopsUser = Depends(require_member),
 ) -> AccumulationOut:
     """크롤링 수집·RAG corpus·골든셋 축적 추이 — batch_runs.metrics 집계."""
     since = datetime.now(timezone.utc) - timedelta(days=days)

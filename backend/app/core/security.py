@@ -1,8 +1,8 @@
 """JWT 발급·검증 + Google ID 토큰 검증.
 
-llmops_users.role: llmops_admin / llmops_viewer (2단계)
-P0 부트스트랩: 첫 가입자가 자동으로 llmops_admin (Phase 3 에서 화이트리스트로 강화)
-패턴 참조: OpsConsole/backend/app/core/security.py
+llmops_users.role: llmops_admin / llmops_viewer / llmops_guest (3단계)
+LLMOPS_ADMIN_EMAILS allowlist 기반 — 목록 외 로그인은 llmops_guest (데이터 API 접근 불가,
+로그인 이력만 기록). 패턴 참조: OpsConsole/backend/app/core/security.py
 """
 from __future__ import annotations
 
@@ -96,10 +96,23 @@ async def get_current_user(
     return user
 
 
-# -- 역할 게이트 (단순 2단계) ----------------------------------------------
+# -- 역할 게이트 ------------------------------------------------------------
 
-ROLE_RANK = {"llmops_viewer": 0, "llmops_admin": 1}
+ROLE_RANK = {"llmops_guest": 0, "llmops_viewer": 1, "llmops_admin": 2}
 VALID_ROLES = tuple(ROLE_RANK.keys())
+
+
+def resolve_role(email: str) -> str:
+    """LLMOPS_ADMIN_EMAILS allowlist 기준 역할 결정. 목록 외는 전부 guest."""
+    admins = {e.strip().lower() for e in settings.llmops_admin_emails.split(",") if e.strip()}
+    return "llmops_admin" if email.lower() in admins else "llmops_guest"
+
+
+def require_member(user: LlmopsUser = Depends(get_current_user)) -> LlmopsUser:
+    """viewer 이상 (guest 차단). 데이터 API 공통 게이트."""
+    if ROLE_RANK.get(user.role, 0) < ROLE_RANK["llmops_viewer"]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "권한이 없습니다 (guest)")
+    return user
 
 
 def require_admin(user: LlmopsUser = Depends(get_current_user)) -> LlmopsUser:
