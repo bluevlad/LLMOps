@@ -58,7 +58,8 @@ export default function PipelineFlow() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get('/api/pipeline/flow')
+    // 공개 홈에서도 렌더되므로 인증 없는 집계 endpoint 사용 (30일 고정)
+    api.get('/api/public/flow')
       .then((r) => setFlow(r.data))
       .catch((e) => setError(e.response?.data?.detail || e.message));
   }, []);

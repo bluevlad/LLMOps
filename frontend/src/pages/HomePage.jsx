@@ -80,18 +80,18 @@ function daysUntil(yyyymmdd) {
 
 export default function HomePage() {
   const { user, logout } = useAuth();
-  const [models, setModels] = useState(null);
   const [health, setHealth] = useState(null);
-  const [comparisons, setComparisons] = useState(null);
+  const [overview, setOverview] = useState(null);
 
   useEffect(() => {
     api.get('/api/health').then((r) => setHealth(r.data)).catch(() => setHealth({ status: 'error' }));
-    api.get('/api/models').then((r) => setModels(r.data)).catch(() => setModels([]));
-    api.get('/api/comparisons').then((r) => setComparisons(r.data)).catch(() => setComparisons([]));
+    // 공개 집계 API — 비로그인(read-only) 홈에서도 KPI 표시
+    api.get('/api/public/overview').then((r) => setOverview(r.data)).catch(() => setOverview(null));
   }, []);
 
   const sunsetDday = useMemo(() => daysUntil(SUNSET_DATE), []);
-  const modelCount = Array.isArray(models) ? models.length : null;
+  const modelCount = overview?.kpi?.model_count ?? null;
+  const comparisonCount = overview?.kpi?.comparison_count ?? null;
   const activePhase = PHASES.find((p) => p.status === 'active');
 
   return (
@@ -104,8 +104,14 @@ export default function HomePage() {
         <div className="row-end">
           <span className={`health-dot ${health?.status === 'ok' ? 'ok' : 'err'}`}>●</span>
           <span className="muted small">backend {health?.status || '...'}</span>
-          <span className="muted">{user.email} · <code>{user.role}</code></span>
-          <button onClick={logout}>Logout</button>
+          {user ? (
+            <>
+              <span className="muted">{user.email} · <code>{user.role}</code></span>
+              <button onClick={logout}>Logout</button>
+            </>
+          ) : (
+            <Link to="/login"><button>관리자 로그인</button></Link>
+          )}
         </div>
       </header>
 
@@ -119,7 +125,7 @@ export default function HomePage() {
           </div>
           <div className="kpi-card">
             <div className="kpi-label">비교 실험</div>
-            <div className="kpi-value">{Array.isArray(comparisons) ? comparisons.length : '—'}</div>
+            <div className="kpi-value">{comparisonCount ?? '—'}</div>
             <div className="kpi-sub"><Link to="/comparisons">교사후보 평가 →</Link></div>
           </div>
           <div className="kpi-card">

@@ -146,12 +146,8 @@ class FlowOut(BaseModel):
     generated_at: datetime
 
 
-@router.get("/flow", response_model=FlowOut)
-async def pipeline_flow(
-    days: int = Query(30, ge=1, le=365),
-    db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(require_member),
-) -> FlowOut:
+async def build_flow(db: AsyncSession, days: int) -> FlowOut:
+    """토폴로지 + 실행 통계 오버레이 조립. 공개 API(/api/public/flow)와 공유."""
     summaries = {s.consumer_id: s for s in await consumer_summaries(db, days)}
 
     nodes: list[FlowNodeOut] = []
@@ -175,3 +171,12 @@ async def pipeline_flow(
         days=days,
         generated_at=datetime.now(timezone.utc),
     )
+
+
+@router.get("/flow", response_model=FlowOut)
+async def pipeline_flow(
+    days: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    _user: LlmopsUser = Depends(require_member),
+) -> FlowOut:
+    return await build_flow(db, days)
