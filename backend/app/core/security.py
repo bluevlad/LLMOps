@@ -62,6 +62,7 @@ def verify_google_id_token(credential: str) -> dict[str, Any]:
             credential,
             google_requests.Request(),
             settings.google_oauth_client_id,
+            clock_skew_in_seconds=10,
         )
     except ValueError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Invalid Google credential: {e}") from e
