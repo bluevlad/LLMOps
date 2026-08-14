@@ -5,13 +5,20 @@
 흐름:
   1. yaml prompt set 로드
   2. comparison_runs 행 생성
-  3. for each (prompt × model): provider 호출 → comparison_results insert
-  4. (옵션) LLM-as-judge 로 quality eval → result 갱신
+  3. for each (model × prompt): provider 호출 → comparison_results insert
+  4. 품질 평가 — 둘 중 하나:
+     a. scoring.mode=label_match — 정답 라벨 자동 채점 (judge·API 키 불필요)
+     b. (기본) LLM-as-judge 로 quality eval → result 갱신
   5. summary (winner per prompt, totals) 계산 후 comparison_runs.summary 갱신
 
 사용:
     python -m scripts.run_comparison --prompt-set scripts/prompts/foo.yaml
     python -m scripts.run_comparison --prompt-set foo.yaml --no-judge
+
+호스트(컨테이너 밖)에서 실행 시 env 오버라이드:
+    DATABASE_URL=postgresql+asyncpg://...@localhost:5432/llmops_dev \
+    OLLAMA_BASE_URL=http://localhost:11434 \
+    .venv/bin/python -m scripts.run_comparison --prompt-set scripts/prompts/foo.yaml
 """
 from __future__ import annotations
 
@@ -31,17 +38,25 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import settings
 from app.models.comparison import ComparisonResult, ComparisonRun
+from scripts.label_scoring import compute_label_metrics, score_output
 
 
 # ---------- Provider 호출 ----------
 
 
-async def call_ollama(model: str, prompt: str) -> dict[str, Any]:
-    """Ollama /api/generate 호출. duration 은 wallclock 측정."""
+async def call_ollama(model: str, prompt: str, think: bool | None = None) -> dict[str, Any]:
+    """Ollama /api/generate 호출. duration 은 wallclock 측정.
+
+    think — thinking 모델(gemma4 등)은 reasoning 이 출력 토큰을 소진해 응답이 비므로
+    False 로 끔. 비-thinking 모델에 보내면 400 이라 yaml 에 명시된 경우에만 전송.
+    """
     url = f"{settings.ollama_base_url}/api/generate"
+    payload: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False}
+    if think is not None:
+        payload["think"] = think
     start = time.perf_counter()
     async with httpx.AsyncClient(timeout=120.0) as client:
-        r = await client.post(url, json={"model": model, "prompt": prompt, "stream": False})
+        r = await client.post(url, json=payload)
         r.raise_for_status()
         data = r.json()
     duration_ms = int((time.perf_counter() - start) * 1000)
@@ -160,6 +175,15 @@ async def run(yaml_path: Path, no_judge: bool, case_override: str | None) -> int
     judge_model = judge_cfg.get("model", "claude-opus-4-7")
     rubric = judge_cfg.get("rubric", "Score output quality 0~1.")
     dim_names = judge_cfg.get("dimensions", ["overall"])
+    # scoring.mode=label_match → 정답 라벨 자동 채점, judge 는 건너뜀
+    label_mode = (spec.get("scoring") or {}).get("mode") == "label_match"
+    # 모든 prompt input 앞에 붙는 공통 프리픽스 (시스템 프롬프트 중복 방지)
+    input_prefix = spec.get("input_prefix", "")
+    expected_by_prompt: dict[str, Any] = {
+        p["id"]: p["expected"] for p in spec["prompts"] if "expected" in p
+    }
+    if label_mode and not expected_by_prompt:
+        raise SystemExit("scoring.mode=label_match 인데 expected 가 있는 prompt 가 없음")
 
     engine = create_async_engine(settings.database_url)
     Session = async_sessionmaker(engine, expire_on_commit=False)
@@ -168,7 +192,7 @@ async def run(yaml_path: Path, no_judge: bool, case_override: str | None) -> int
         run_row = ComparisonRun(
             case_name=case_name,
             prompt_set_id=prompt_set_id,
-            judge_model=judge_model if not no_judge else None,
+            judge_model="label-match" if label_mode else (judge_model if not no_judge else None),
             note=spec.get("description"),
         )
         session.add(run_row)
@@ -176,17 +200,19 @@ async def run(yaml_path: Path, no_judge: bool, case_override: str | None) -> int
         run_id = run_row.id
         print(f"[run] comparison_run_id={run_id} case={case_name}")
 
-        # 1) provider 실행
-        for prompt_spec in spec["prompts"]:
-            prompt_id = prompt_spec["id"]
-            prompt_text = prompt_spec["input"]
-            for model_spec in spec["models"]:
-                provider = model_spec["provider"]
-                model_id = model_spec["id"]
+        # 1) provider 실행 — model 외측 루프: Ollama 모델 로드 스왑 최소화
+        for model_spec in spec["models"]:
+            provider = model_spec["provider"]
+            model_id = model_spec["id"]
+            for prompt_spec in spec["prompts"]:
+                prompt_id = prompt_spec["id"]
+                prompt_text = input_prefix + prompt_spec["input"]
                 print(f"  [exec] {prompt_id} × {model_id} ...", flush=True)
                 try:
-                    call_fn = PROVIDER_CALL[provider]
-                    out = await call_fn(model_id, prompt_text)
+                    if provider == "ollama":
+                        out = await call_ollama(model_id, prompt_text, think=model_spec.get("think"))
+                    else:
+                        out = await PROVIDER_CALL[provider](model_id, prompt_text)
                     cost = calc_cost(out["tokens_in"], out["tokens_out"], model_spec)
                     session.add(ComparisonResult(
                         comparison_run_id=run_id,
@@ -211,8 +237,25 @@ async def run(yaml_path: Path, no_judge: bool, case_override: str | None) -> int
                     ))
                 await session.commit()
 
-        # 2) LLM-as-judge
-        if not no_judge:
+        # 2a) 정답 라벨 자동 채점 (결정적 — judge·API 키 불필요)
+        if label_mode:
+            results = (await session.execute(
+                select(ComparisonResult).where(ComparisonResult.comparison_run_id == run_id)
+            )).scalars().all()
+            for res in results:
+                expected = expected_by_prompt.get(res.prompt_id)
+                if expected is None or not res.output_text:
+                    continue
+                score, dims, predicted = score_output(res.output_text, expected)
+                res.quality_score = Decimal(str(score))
+                res.quality_dimensions = dims
+                res.quality_judge = "label-match"
+                res.raw = {**(res.raw or {}), "predicted": predicted, "expected": expected}
+                print(f"  [score] {res.prompt_id} × {res.model_id} → {score} {dims}")
+            await session.commit()
+
+        # 2b) LLM-as-judge
+        if not label_mode and not no_judge:
             print(f"[judge] using {judge_model}")
             results = (await session.execute(
                 select(ComparisonResult).where(ComparisonResult.comparison_run_id == run_id)
@@ -238,6 +281,13 @@ async def run(yaml_path: Path, no_judge: bool, case_override: str | None) -> int
             select(ComparisonResult).where(ComparisonResult.comparison_run_id == run_id)
         )).scalars().all()
         summary = compute_summary(results)
+        if label_mode:
+            summary["label_metrics"] = compute_label_metrics([
+                (r.model_id, expected_by_prompt[r.prompt_id], (r.raw or {}).get("predicted"))
+                for r in results
+                if r.prompt_id in expected_by_prompt
+                and isinstance(expected_by_prompt[r.prompt_id], dict)
+            ])
         await session.execute(
             update(ComparisonRun)
             .where(ComparisonRun.id == run_id)

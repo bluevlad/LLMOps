@@ -60,10 +60,10 @@ _NODES: list[dict[str, Any]] = [
      "description": "기사별 추천/근거 JSON (qwen2.5-coder)"},
     {"id": "proc-standup", "label": "주간 뉴스레터 생성", "layer": "process", "service": "standup",
      "status": "active", "consumer_id": "standup-weekly-newsletter",
-     "description": "3-stage cascade (llama→qwen→exaone)"},
+     "description": "3-stage cascade (gemma→qwen→exaone)"},
     {"id": "proc-skillradar", "label": "AI 요약·분류·편성", "layer": "process", "service": "skillradar",
      "status": "active", "consumer_id": "skillradar-synthesis",
-     "description": "enrich(llama3.2) + digest 편성(exaone) + 임베딩"},
+     "description": "enrich(gemma4) + digest 편성(exaone) + 임베딩"},
     # 저장·산출
     {"id": "store-chroma", "label": "ChromaDB (논문 지식)", "layer": "store", "service": "allergy",
      "status": "active", "description": "chunk 800/overlap 100, cosine"},
