@@ -44,12 +44,19 @@ from scripts.label_scoring import compute_label_metrics, score_output
 # ---------- Provider 호출 ----------
 
 
-async def call_ollama(model: str, prompt: str) -> dict[str, Any]:
-    """Ollama /api/generate 호출. duration 은 wallclock 측정."""
+async def call_ollama(model: str, prompt: str, think: bool | None = None) -> dict[str, Any]:
+    """Ollama /api/generate 호출. duration 은 wallclock 측정.
+
+    think — thinking 모델(gemma4 등)은 reasoning 이 출력 토큰을 소진해 응답이 비므로
+    False 로 끔. 비-thinking 모델에 보내면 400 이라 yaml 에 명시된 경우에만 전송.
+    """
     url = f"{settings.ollama_base_url}/api/generate"
+    payload: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False}
+    if think is not None:
+        payload["think"] = think
     start = time.perf_counter()
     async with httpx.AsyncClient(timeout=120.0) as client:
-        r = await client.post(url, json={"model": model, "prompt": prompt, "stream": False})
+        r = await client.post(url, json=payload)
         r.raise_for_status()
         data = r.json()
     duration_ms = int((time.perf_counter() - start) * 1000)
@@ -202,8 +209,10 @@ async def run(yaml_path: Path, no_judge: bool, case_override: str | None) -> int
                 prompt_text = input_prefix + prompt_spec["input"]
                 print(f"  [exec] {prompt_id} × {model_id} ...", flush=True)
                 try:
-                    call_fn = PROVIDER_CALL[provider]
-                    out = await call_fn(model_id, prompt_text)
+                    if provider == "ollama":
+                        out = await call_ollama(model_id, prompt_text, think=model_spec.get("think"))
+                    else:
+                        out = await PROVIDER_CALL[provider](model_id, prompt_text)
                     cost = calc_cost(out["tokens_in"], out["tokens_out"], model_spec)
                     session.add(ComparisonResult(
                         comparison_run_id=run_id,

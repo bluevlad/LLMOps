@@ -18,15 +18,17 @@
 case_name: skillradar-enrich-slot-2026q3
 prompt_set_id: skillradar-enrich-labels-2026q3
 description: >
-  SkillRadar enrich(요약·태깅) 슬롯 교체 평가 — llama3.2:3b(현행) vs qwen2.5:7b vs
-  exaone3.5:7.8b. cost/audience 정답 라벨 20건 자동 채점.
+  SkillRadar enrich(요약·태깅) 슬롯 평가 — gemma4:12b-mlx(현행, llama3.2:3b 에서
+  2026-08-14 교체) vs qwen2.5:7b vs exaone3.5:7.8b. cost/audience 정답 라벨 20건 자동 채점.
 
 scoring:
   mode: label_match
 
 models:
-  - id: llama3.2:3b
+  # llama3.2:3b — 2026-08-14 퇴출·설치 삭제 (label_match 0.421 열세, run #2 기록은 DB 보존)
+  - id: gemma4:12b-mlx
     provider: ollama
+    think: false        # thinking 모델 — reasoning 이 출력 토큰 소진 방지 (운영과 동일 설정)
   - id: qwen2.5:7b
     provider: ollama
   - id: exaone3.5:7.8b
