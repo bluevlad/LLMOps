@@ -1,5 +1,7 @@
 # LLMOps 프로젝트 설정
 
+> 3-머신 작업 환경(MacBook 편집·운영 / Desktop 터미널·AutoQA / Notebook TIPAIP2 격리) 규칙: [WORKSTATION_GUIDE.md](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/infrastructure/environments/WORKSTATION_GUIDE.md) — 개인 서비스 편집은 MacBook 에서만, Desktop 은 pull-only
+
 > Git-First Workflow는 `~/GIT/CLAUDE.md`에서 자동 상속됩니다.
 > 본 파일에는 LLMOps 고유 설정만 작성합니다.
 >
