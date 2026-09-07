@@ -2,7 +2,7 @@
 
 Phase 2 (γ) 무료 vs 유료 비교 실험 모듈을 위한 신규 테이블.
 
-표준: services/llmops/PHASE_2_DESIGN.md §4 (Claude-Opus-bluevlad)
+표준: services/llmops/PHASE_2_DESIGN.md §4 (Ai-Legacy-bluevlad)
 
 Revision ID: f8b3c1a72de9
 Revises: e7a2b89cf421

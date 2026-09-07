@@ -5,7 +5,7 @@
 
 > 🟡 **상태**: Phase 1.5 (목적 재정의 + 표준 v0.2.0) 진행 중 — Phase 1a~1d 골격 완료
 > **운영 도메인**: https://llmops.unmong.com (Phase 1d 부터 활성)
-> **전략·플랜·표준 정본**: [`Claude-Opus-bluevlad/services/llmops/`](https://github.com/bluevlad/Claude-Opus-bluevlad/tree/main/services/llmops) (private) — **로드맵·결정 이력·Phase 정의는 모두 정본 참조**
+> **전략·플랜·표준 정본**: [`Ai-Legacy-bluevlad/services/llmops/`](https://github.com/bluevlad/Ai-Legacy-bluevlad/tree/main/services/llmops) (private) — **로드맵·결정 이력·Phase 정의는 모두 정본 참조**
 > 본 코드 저장소(public)에는 **구현 코드만** 둡니다.
 
 ---
@@ -22,7 +22,7 @@
 | 🟡 **조건부 유지** | 분기당 리포트 ≥ 1 + 영향력(리포트로 인한 consumer 모델 교체 결정 수) = 0 — Phase 5/6 신규 투자 중단 |
 | 🟢 **정식 유지** | 분기당 리포트 ≥ 1 + 영향력 ≥ 1 + (paid-API 도입 결정 또는 절감 결정 근거 제공) |
 
-상세 기준 (v0.1.0 deprecated 사유 포함): [정본 문서 §Sunset 조항](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/services/llmops/README.md#sunset-조항-v020--인사이트-기반으로-재정의)
+상세 기준 (v0.1.0 deprecated 사유 포함): [정본 문서 §Sunset 조항](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/services/llmops/README.md#sunset-조항-v020--인사이트-기반으로-재정의)
 
 ### 흡수 절차 (자동 종료 시)
 
@@ -94,9 +94,9 @@ LLMOps/
 
 ## 데이터 모델 (표준 문서)
 
-- **모델 인벤토리 스키마**: [`standards/ai/LLM_INVENTORY_SCHEMA.md`](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/ai/LLM_INVENTORY_SCHEMA.md)
-- **배치 보고 API 계약**: [`standards/observability/BATCH_RUN_REPORTING.md`](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/observability/BATCH_RUN_REPORTING.md)
-- **Consumer SSoT**: [`infrastructure/service-registry.yaml`](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/infrastructure/service-registry.yaml) `llm_consumers` 섹션
+- **모델 인벤토리 스키마**: [`standards/ai/LLM_INVENTORY_SCHEMA.md`](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/standards/ai/LLM_INVENTORY_SCHEMA.md)
+- **배치 보고 API 계약**: [`standards/observability/BATCH_RUN_REPORTING.md`](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/standards/observability/BATCH_RUN_REPORTING.md)
+- **Consumer SSoT**: [`infrastructure/service-registry.yaml`](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/infrastructure/service-registry.yaml) `llm_consumers` 섹션
 
 ## 로드맵 (요약)
 
@@ -110,7 +110,7 @@ LLMOps/
 | 5 | — | shared SDK + 4개 consumer 계측 | 대기 |
 | 6 | — | 시각화 확장 (모델↔서비스 매트릭스) | 대기 |
 
-상세·순서 결정 근거·결정 이력은 [정본 로드맵](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/services/llmops/README.md#로드맵-v020) 참조.
+상세·순서 결정 근거·결정 이력은 [정본 로드맵](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/services/llmops/README.md#로드맵-v020) 참조.
 
 ## 인증
 
@@ -121,4 +121,4 @@ JWT 발급은 LLMOps 자체. role: `llmops_admin` / `llmops_viewer`.
 
 - **InfraWatcher** (`infrawatcher.unmong.com`) — 포트 헬스체크. LLMOps 종료 시 흡수 대상
 - **OpsConsole** (`opsconsole.unmong.com`) — IDP. LLMOps 의 OAuth/구조 패턴 참조 원본
-- **Claude-Opus-bluevlad** (private) — 표준·전략·SSoT
+- **Ai-Legacy-bluevlad** (private) — 표준·전략·SSoT

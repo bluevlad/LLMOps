@@ -1,11 +1,11 @@
 # LLMOps 프로젝트 설정
 
-> 3-머신 작업 환경(MacBook 편집·운영 / Desktop 터미널·AutoQA / Notebook TIPAIP2 격리) 규칙: [WORKSTATION_GUIDE.md](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/infrastructure/environments/WORKSTATION_GUIDE.md) — 개인 서비스 편집은 MacBook 에서만, Desktop 은 pull-only
+> 3-머신 작업 환경(MacBook 편집·운영 / Desktop 터미널·AutoQA / Notebook TIPAIP2 격리) 규칙: [WORKSTATION_GUIDE.md](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/infrastructure/environments/WORKSTATION_GUIDE.md) — 개인 서비스 편집은 MacBook 에서만, Desktop 은 pull-only
 
 > Git-First Workflow는 `~/GIT/CLAUDE.md`에서 자동 상속됩니다.
 > 본 파일에는 LLMOps 고유 설정만 작성합니다.
 >
-> **전략·플랜·표준 정본**: [`Claude-Opus-bluevlad/services/llmops/`](https://github.com/bluevlad/Claude-Opus-bluevlad/tree/main/services/llmops) (private)
+> **전략·플랜·표준 정본**: [`Ai-Legacy-bluevlad/services/llmops/`](https://github.com/bluevlad/Ai-Legacy-bluevlad/tree/main/services/llmops) (private)
 > 본 코드 저장소(public)에는 **구현 코드만** 둡니다.
 
 ## 프로젝트 개요
@@ -29,11 +29,11 @@
 - Frontend: **4110**
 - Backend: **9110**
 - 도메인: `https://llmops.unmong.com/` (게이트웨이)
-- `https://도메인:포트` 형식 금지 — [DOMAIN_MANAGEMENT.md](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/infrastructure/DOMAIN_MANAGEMENT.md) 준수
+- `https://도메인:포트` 형식 금지 — [DOMAIN_MANAGEMENT.md](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/standards/infrastructure/DOMAIN_MANAGEMENT.md) 준수
 
 ## Git Workflow — `main` 기본 작업 / `prod` 배포 트리거
 
-표준: [`MAIN_PROD_WORKFLOW.md`](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/git/MAIN_PROD_WORKFLOW.md), [`PROD_TO_MAIN_AUTO_SYNC.md`](https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/git/PROD_TO_MAIN_AUTO_SYNC.md)
+표준: [`MAIN_PROD_WORKFLOW.md`](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/standards/git/MAIN_PROD_WORKFLOW.md), [`PROD_TO_MAIN_AUTO_SYNC.md`](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/standards/git/PROD_TO_MAIN_AUTO_SYNC.md)
 
 | 브랜치 | 역할 |
 |---|---|
@@ -62,8 +62,8 @@ git checkout main    # 다시 main 으로 복귀
 
 | 표준 | 위치 |
 |---|---|
-| 모델 인벤토리 스키마 | `standards/ai/LLM_INVENTORY_SCHEMA.md` (Claude-Opus-bluevlad) |
-| 배치 보고 API 계약 | `standards/observability/BATCH_RUN_REPORTING.md` (Claude-Opus-bluevlad) |
+| 모델 인벤토리 스키마 | `standards/ai/LLM_INVENTORY_SCHEMA.md` (Ai-Legacy-bluevlad) |
+| 배치 보고 API 계약 | `standards/observability/BATCH_RUN_REPORTING.md` (Ai-Legacy-bluevlad) |
 | Consumer SSoT | `infrastructure/service-registry.yaml` 의 `llm_consumers` 섹션 |
 
 → DDL / API payload / 필드 변경 시 위 3개를 **먼저** 수정 후 코드 반영.

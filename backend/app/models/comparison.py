@@ -1,6 +1,6 @@
 """comparison_runs + comparison_results — Phase 2 (γ) 무료 vs 유료 비교 실험 결과.
 
-표준: services/llmops/PHASE_2_DESIGN.md §4 (Claude-Opus-bluevlad)
+표준: services/llmops/PHASE_2_DESIGN.md §4 (Ai-Legacy-bluevlad)
 
 batch_runs 와 분리한 이유: production 워크로드 로깅과 R&D 비교 실험은 의미가 달라
 같은 테이블에 섞으면 분석 신호가 오염됨 (PHASE_2_DESIGN.md §2).

@@ -46,7 +46,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="LLMOps API",
         version="0.1.0",
-        description="로컬 LLM 사용 현황·ROI 통합 관제 — 표준: Claude-Opus-bluevlad/standards/ai/",
+        description="로컬 LLM 사용 현황·ROI 통합 관제 — 표준: Ai-Legacy-bluevlad/standards/ai/",
         lifespan=lifespan,
     )
 

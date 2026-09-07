@@ -1,6 +1,6 @@
 """run_comparison.py — Phase 2 (γ) 무료 vs 유료 비교 실험 CLI.
 
-표준: services/llmops/PHASE_2_DESIGN.md (Claude-Opus-bluevlad)
+표준: services/llmops/PHASE_2_DESIGN.md (Ai-Legacy-bluevlad)
 
 흐름:
   1. yaml prompt set 로드

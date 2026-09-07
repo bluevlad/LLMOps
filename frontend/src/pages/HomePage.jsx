@@ -8,7 +8,7 @@ const PipelineFlow = lazy(() => import('../components/PipelineFlow.jsx'));
 
 const SUNSET_DATE = '2026-11-18';
 
-// Phase 카드 정의 — 정본: Claude-Opus-bluevlad/services/llmops/README.md §로드맵
+// Phase 카드 정의 — 정본: Ai-Legacy-bluevlad/services/llmops/README.md §로드맵
 const PHASES = [
   {
     id: 'p1',
@@ -28,7 +28,7 @@ const PHASES = [
     deliverable: 'BATCH_RUN_REPORTING v0.2.0, LLM_INVENTORY v0.2.0',
     action: {
       type: 'external',
-      to: 'https://github.com/bluevlad/Claude-Opus-bluevlad/blob/main/standards/observability/BATCH_RUN_REPORTING.md',
+      to: 'https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/standards/observability/BATCH_RUN_REPORTING.md',
       label: '표준 문서 →',
     },
   },
@@ -189,8 +189,8 @@ export default function HomePage() {
         <h2>참고 / 외부</h2>
         <ul>
           <li>
-            정본: <a href="https://github.com/bluevlad/Claude-Opus-bluevlad/tree/main/services/llmops" target="_blank" rel="noreferrer">
-              Claude-Opus-bluevlad/services/llmops/
+            정본: <a href="https://github.com/bluevlad/Ai-Legacy-bluevlad/tree/main/services/llmops" target="_blank" rel="noreferrer">
+              Ai-Legacy-bluevlad/services/llmops/
             </a> (private — 로드맵·결정 이력·Phase 설계)
           </li>
           <li>

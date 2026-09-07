@@ -1,6 +1,6 @@
 """generate_report.py — comparison_run_id → 마크다운 리포트.
 
-표준: services/llmops/PHASE_2_DESIGN.md §7 (Claude-Opus-bluevlad)
+표준: services/llmops/PHASE_2_DESIGN.md §7 (Ai-Legacy-bluevlad)
 
 운영자가 이 리포트를 보고 "어느 task 를 어느 모델로 옮길지" 의사결정해야 함.
 의사결정 가능한 형태가 되도록 Pareto front + per-prompt winner 모두 포함.
