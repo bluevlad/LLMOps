@@ -306,3 +306,72 @@ table tbody tr:hover { background: #14171d; }
   margin-right: 5px;
   vertical-align: 3px;
 }
+
+/* --- 모델 모니터링 (ModelsPage / ModelDetailPage) --- */
+.table-scroll { overflow-x: auto; }
+.row-deprecated td { opacity: 0.55; }
+.filter-bar label { display: inline-flex; align-items: center; gap: 4px; }
+.select {
+  background: #0a0c10;
+  color: #e6e6e6;
+  border: 1px solid #2a2e38;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.badge-live  { color: #6effb3; border-color: #2c5c45; background: #0e1e17; }
+.badge-muted { color: #888;    border-color: #333;    background: #14171d; }
+.lc-active     { color: #6effb3; border-color: #2c5c45; background: #0e1e17; }
+.lc-eval       { color: #9ab7ff; border-color: #2f4270; background: #10162a; }
+.lc-idle       { color: #ffcb6b; border-color: #5c4b2c; background: #1e1810; }
+.lc-retire     { color: #ff6b6b; border-color: #5c2c2c; background: #1e1010; }
+.lc-uninst     { color: #b8bcc6; border-color: #3a4050; background: #14171d; }
+.lc-deprecated { color: #777;    border-color: #333;    background: #14171d; text-decoration: line-through; }
+
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: #0a0c10;
+  border: 1px solid #2a2e38;
+  color: #b8bcc6;
+  white-space: nowrap;
+}
+.sparkline { display: block; }
+
+.kpi-row-6 { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 1000px) { .kpi-row-6 { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 620px)  { .kpi-row-6 { grid-template-columns: repeat(2, 1fr); } }
+.kpi-value .sm { font-size: 18px; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+.detail-card {
+  background: #14171d;
+  border: 1px solid #2a2e38;
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+.detail-card dl.kv { margin-top: 8px; grid-template-columns: 96px 1fr; }
+.sub-h {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  color: #aab;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}

@@ -11,6 +11,7 @@ from app.api.auth import router as auth_router
 from app.api.batch_runs import router as batch_runs_router
 from app.api.comparisons import router as comparisons_router
 from app.api.golden_set import router as golden_set_router
+from app.api.model_monitor import router as model_monitor_router
 from app.api.models import router as models_router
 from app.api.pipeline import router as pipeline_router
 from app.api.public import router as public_router
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router, prefix="/api")
     app.include_router(models_router, prefix="/api")
+    app.include_router(model_monitor_router, prefix="/api")
     app.include_router(batch_runs_router, prefix="/api")
     app.include_router(comparisons_router, prefix="/api")
     app.include_router(usage_router, prefix="/api")

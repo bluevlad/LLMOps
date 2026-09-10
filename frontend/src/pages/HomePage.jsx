@@ -15,9 +15,9 @@ const PHASES = [
     code: 'Phase 1',
     title: '모델 인벤토리',
     status: 'done',
-    summary: 'Ollama/MLX 자동 수집 → llm_models 테이블',
-    deliverable: '/api/models, 인벤토리 화면',
-    action: { type: 'internal', to: '/models', label: '인벤토리 열기 →' },
+    summary: 'Ollama/MLX 자동 수집 + 모델별 사용·상주·수명주기 모니터링',
+    deliverable: '/api/models/{stats,live,detail,anomalies}, 모델 모니터링 화면',
+    action: { type: 'internal', to: '/models', label: '모델 모니터링 열기 →' },
   },
   {
     id: 'p1.5',
