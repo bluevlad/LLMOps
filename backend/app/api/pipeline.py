@@ -68,7 +68,7 @@ _NODES: list[dict[str, Any]] = [
      "description": "enrich(gemma4) + digest 편성(exaone) + 임베딩"},
     {"id": "proc-docpipeline-refine", "label": "파싱 정제 (refine)", "layer": "process", "service": "docpipeline",
      "status": "pending", "consumer_id": "docpipeline-refine",
-     "description": "머리말/꼬리말·깨짐문자·중복 제거 → refined text (exaone3.5, REFINE_LLM_MODEL) — batch_runs 연동 대기"},
+     "description": "머리말/꼬리말·깨짐문자·중복 제거 → refined text (gemma4 | exaone3.5 요청/개입 단위 선택, REFINE_LLM_MODELS) — batch_runs 연동 대기"},
     # 저장·산출
     {"id": "store-chroma", "label": "ChromaDB (논문 지식)", "layer": "store", "service": "allergy",
      "status": "active", "description": "chunk 800/overlap 100, cosine"},

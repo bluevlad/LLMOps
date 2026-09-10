@@ -88,6 +88,7 @@ def test_role_tags_from_snapshot() -> None:
     assert model_roles.role_tags_for("exaone3.5:7.8b") == ["analyze", "compose", "refine"]
     assert "docpipeline-refine" in model_roles.consumers_for("exaone3.5:7.8b")
     assert "skillradar-synthesis" in model_roles.consumers_for("gemma4:12b-mlx")
+    assert "refine" in model_roles.role_tags_for("gemma4:12b-mlx") and "docpipeline-refine" in model_roles.consumers_for("gemma4:12b-mlx")
     assert model_roles.consumers_for("qwen2.5:7b") == []
 
 

@@ -29,6 +29,9 @@ MODEL_ROLES: list[ModelRole] = [
     {"model": "gemma4:12b-mlx", "consumer_id": "allergyinsight-rag-chat", "role": "rag-answer"},
     {"model": "gemma4:12b-mlx", "consumer_id": "allergyinsight-evolution-proposal", "role": "proposal"},
     {"model": "gemma4:12b-mlx", "consumer_id": "standup-weekly-newsletter", "role": "analyze"},
+    # DocPipeline 파싱 정제 후보 (REFINE_LLM_MODELS, 2026-09-10) — exaone 과 요청/개입 단위 선택. think:false 로 호출
+    {"model": "gemma4:12b-mlx", "consumer_id": "docpipeline-refine", "role": "refine", "instrumented": False,
+     "note": "정제 후보 2종 중 선택 (기본은 REFINE_LLM_MODEL) — batch_runs 미연동"},
     # exaone3.5:7.8b — 한국어 콘텐츠 생성·정제 경로 (연구 전용 라이선스 → 골든셋 축적 라인 제외)
     {"model": "exaone3.5:7.8b", "consumer_id": "tech-briefing-newsletter", "role": "analyze"},
     {"model": "exaone3.5:7.8b", "consumer_id": "skillradar-synthesis", "role": "compose"},
