@@ -1,0 +1,247 @@
+# gemma4:26b-mlx 후보 평가 — 2026-09-05 인벤토리 정리 2번 단계.
+# 프롬프트·라벨은 skillradar-enrich-labels-2026q3.yaml 과 동일 (운영 프롬프트 그대로).
+#
+# 실행 (컨테이너):
+#   docker exec llmops-backend python -m scripts.run_comparison \
+#     --prompt-set scripts/prompts/gemma4-26b-candidate-2026q3.yaml
+
+case_name: skillradar-enrich-slot-2026q3
+prompt_set_id: skillradar-enrich-labels-2026q3
+description: >
+  gemma4:26b-mlx 후보 평가 — 설치 후 호출 0건인 26B(nvfp4, MoE) 를 현행 gemma4:12b-mlx
+  와 동일 슬롯(SkillRadar enrich, cost/audience 정답 라벨 20건) 에서 자동 채점. 퇴출/승격 판단용.
+
+scoring:
+  mode: label_match
+
+models:
+  - id: gemma4:26b-mlx
+    provider: ollama
+    think: false
+  - id: gemma4:12b-mlx
+    provider: ollama
+    think: false        # 현행 (run #3 우승 0.838)
+
+# SkillRadar SUMMARIZE_SYSTEM (운영 프롬프트) — 모든 항목 앞에 공통 삽입
+input_prefix: |
+  당신은 AI 학습 정보를 큐레이션하는 한국어 에디터입니다.
+  주어진 항목(교육과정/세미나/정책/뉴스)을 취업준비생·직장인 관점에서 분석합니다.
+  - 입력에 명시된 내용만 사용. 추측·과장 금지.
+  - 출력은 JSON 한 덩어리. 다른 텍스트 금지.
+
+  형식:
+  {
+    "summary": "1~2문장 한국어 요약 (왜 학습자에게 유용한지)",
+    "tags": ["관련 키워드 3~6개, 소문자"],
+    "audience": ["jobseeker", "junior", "senior" 중 해당되는 것],
+    "cost": "free | paid | gov_funded | unknown"
+  }
+
+prompts:
+  # ── gov_funded (5) ─────────────────────────────────────────────
+  - id: gov-01
+    input: |
+      [유형] 교육과정
+      [제목] K-디지털 트레이닝 생성형 AI 백엔드 부트캠프 16기
+      [출처] 멋쟁이사자처럼
+      [본문] 국민내일배움카드로 전액 국비지원되는 6개월 풀타임 과정. 취업준비생 대상,
+      Python·FastAPI·LLM 서빙까지 실무 프로젝트 중심. 훈련장려금 월 최대 31만원 별도 지급.
+    expected:
+      cost: gov_funded
+      audience: [jobseeker]
+  - id: gov-02
+    input: |
+      [유형] 교육과정
+      [제목] 재직자 AI 역량강화 야간과정 (고용보험 환급)
+      [출처] 한국생산성본부
+      [본문] 고용보험 가입 재직자라면 사업주 위탁훈련으로 교육비 최대 90% 환급.
+      주 2회 야간 8주, 사내 데이터 분석 자동화 실습. 주니어 실무자 추천.
+    expected:
+      cost: gov_funded
+      audience: [junior]
+  - id: gov-03
+    input: |
+      [유형] 정책
+      [제목] 2026 하반기 AI 인재양성 바우처 신청 접수
+      [출처] 과학기술정보통신부
+      [본문] 미취업 청년에게 AI 교육 바우처 200만원 상당을 지원하는 정부 사업.
+      8월 말까지 신청, 소득 요건 있음.
+    expected:
+      cost: gov_funded
+      audience: [jobseeker]
+  - id: gov-04
+    input: |
+      [유형] 교육과정
+      [제목] 폴리텍 신중년 AI 융합 기술과정
+      [출처] 한국폴리텍대학
+      [본문] 만 40세 이상 중장년·시니어 재직자와 전직 희망자를 위한 국비 전액 지원
+      6개월 과정. 스마트팩토리 데이터 활용 실습 중심.
+    expected:
+      cost: gov_funded
+      audience: [senior]
+  - id: gov-05
+    input: |
+      [유형] 정책
+      [제목] 중소기업 재직자 AI 직무전환 지원금 확대
+      [출처] 고용노동부
+      [본문] 중소기업 재직자가 AI 관련 훈련 수강 시 훈련비 전액과 대체인력 인건비를
+      정부가 지원. 경력 무관 전 직급 대상.
+    expected:
+      cost: gov_funded
+      audience: [junior, senior]
+
+  # ── free (5) ───────────────────────────────────────────────────
+  - id: free-01
+    input: |
+      [유형] 세미나
+      [제목] 오픈소스 LLM 밋업 — RAG 실전 사례 공유
+      [출처] AI 개발자 커뮤니티
+      [본문] 참가비 무료, 선착순 100명. 현업 시니어 엔지니어들의 RAG 운영 사례 발표와
+      네트워킹. 주니어 개발자 환영.
+    expected:
+      cost: free
+      audience: [junior, senior]
+  - id: free-02
+    input: |
+      [유형] 교육과정
+      [제목] 부스트코스 코칭스터디: AI 기초 다지기
+      [출처] 네이버 커넥트재단
+      [본문] 누구나 무료로 수강 가능한 온라인 코칭스터디. 비전공 취업준비생을 위한
+      파이썬·머신러닝 입문 4주 과정, 수료증 발급.
+    expected:
+      cost: free
+      audience: [jobseeker]
+  - id: free-03
+    input: |
+      [유형] 뉴스
+      [제목] 구글, 한국어 지원 AI 자격 과정 무료 개방
+      [출처] 테크 미디어
+      [본문] 구글이 커리어 자격 과정 중 AI 에센셜을 한국어로 무료 개방했다.
+      취업 준비생과 직무 전환 희망 직장인 모두 수강 가능.
+    expected:
+      cost: free
+      audience: [jobseeker, junior, senior]
+  - id: free-04
+    input: |
+      [유형] 세미나
+      [제목] 시니어 개발자를 위한 AI 페어프로그래밍 웨비나
+      [출처] 개발자 컨퍼런스 사무국
+      [본문] 등록비 없이 온라인 생중계. 15년차 이상 시니어 엔지니어 대상으로
+      코딩 에이전트 도입 전략을 다룬다.
+    expected:
+      cost: free
+      audience: [senior]
+  - id: free-05
+    input: |
+      [유형] 교육과정
+      [제목] 프롬프트 엔지니어링 오픈 강좌
+      [출처] K-MOOC
+      [본문] 국가평생교육진흥원 K-MOOC 무료 강좌. 전공 무관 누구나 수강,
+      취준생 포트폴리오용 실습 과제 포함.
+    expected:
+      cost: free
+      audience: [jobseeker]
+
+  # ── paid (5) ───────────────────────────────────────────────────
+  - id: paid-01
+    input: |
+      [유형] 교육과정
+      [제목] LLM 서비스 설계 마스터클래스
+      [출처] 패스트캠퍼스
+      [본문] 수강료 59만원 (얼리버드 20% 할인). 3년차 이상 주니어~미들 개발자 대상,
+      프로덕션 LLM 아키텍처 설계 8주 온라인.
+    expected:
+      cost: paid
+      audience: [junior]
+  - id: paid-02
+    input: |
+      [유형] 세미나
+      [제목] AI 프로덕트 리더십 컨퍼런스 2026
+      [출처] 컨퍼런스 주최사
+      [본문] 티켓 33만원. CTO·테크리드 등 시니어 리더 대상 트랙 중심,
+      AI 조직 운영과 ROI 측정 세션.
+    expected:
+      cost: paid
+      audience: [senior]
+  - id: paid-03
+    input: |
+      [유형] 교육과정
+      [제목] 비전공자 AI 취업 완성반 (환급 없음)
+      [출처] 사설 부트캠프
+      [본문] 수강료 480만원 일시납 또는 무이자 할부. 국비지원 미적용 과정으로
+      취업준비생 대상 커리어 코칭 포함 16주.
+    expected:
+      cost: paid
+      audience: [jobseeker]
+  - id: paid-04
+    input: |
+      [유형] 교육과정
+      [제목] MLOps 실무 심화 — 쿠버네티스 기반 서빙
+      [출처] 인프런
+      [본문] 유료 강의 (88,000원). 현업 ML 엔지니어 경력 2~5년차에게 적합한
+      실습 중심 커리큘럼.
+    expected:
+      cost: paid
+      audience: [junior]
+  - id: paid-05
+    input: |
+      [유형] 세미나
+      [제목] 금융권 AI 컴플라이언스 워크숍
+      [출처] 금융연수원
+      [본문] 참가비 25만원, 법인카드 결제 가능. 금융사 재직 10년차 이상
+      시니어 실무자·관리자 대상 1일 집중 과정.
+    expected:
+      cost: paid
+      audience: [senior]
+
+  # ── unknown (5) ────────────────────────────────────────────────
+  - id: unk-01
+    input: |
+      [유형] 뉴스
+      [제목] 국내 대학들, AI 단과대 신설 경쟁
+      [출처] 교육 전문지
+      [본문] 주요 대학이 2027학년도부터 AI 단과대학을 신설한다. 입시 정원과
+      커리큘럼 개편 내용을 다룬 기사.
+    expected:
+      cost: unknown
+      audience: [jobseeker]
+  - id: unk-02
+    input: |
+      [유형] 세미나
+      [제목] 사내 AI 도입 사례 공유회 (참가비 추후 공지)
+      [출처] 산업 협회
+      [본문] 제조업 재직자 대상 AI 자동화 사례 발표. 일정은 9월 중,
+      참가비와 장소는 추후 공지 예정.
+    expected:
+      cost: unknown
+      audience: [junior, senior]
+  - id: unk-03
+    input: |
+      [유형] 교육과정
+      [제목] 클라우드 AI 아키텍트 자격 대비반
+      [출처] IT 교육기관
+      [본문] 자격증 취득을 목표로 하는 8주 과정. 경력 5년 내외 주니어~미들
+      엔지니어 추천. 수강료는 상담 후 안내.
+    expected:
+      cost: unknown
+      audience: [junior]
+  - id: unk-04
+    input: |
+      [유형] 뉴스
+      [제목] AI 채용 공고, 전년 대비 2배 증가
+      [출처] 채용 플랫폼 리서치
+      [본문] 상반기 AI 직무 채용 공고가 급증했다는 조사 결과. 신입·경력 모두
+      수요가 늘었으며 취업 준비생에게 유리한 시장이라는 분석.
+    expected:
+      cost: unknown
+      audience: [jobseeker]
+  - id: unk-05
+    input: |
+      [유형] 세미나
+      [제목] 정년 이후 커리어와 AI 리스킬링 포럼
+      [출처] 시니어 커리어 재단
+      [본문] 50대 이상 시니어의 재취업과 AI 학습 전략을 다루는 포럼.
+      참가 방법은 홈페이지 참조.
+    expected:
+      cost: unknown
+      audience: [senior]

@@ -10,6 +10,7 @@ import ModelsPage from './pages/ModelsPage.jsx';
 const ComparisonsPage = lazy(() => import('./pages/ComparisonsPage.jsx'));
 const UsagePage = lazy(() => import('./pages/UsagePage.jsx'));
 const GoldenSetPage = lazy(() => import('./pages/GoldenSetPage.jsx'));
+const ModelDetailPage = lazy(() => import('./pages/ModelDetailPage.jsx'));
 
 export default function App() {
   return (
@@ -18,6 +19,16 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<HomePage />} />
         <Route path="/models" element={<RequireAuth adminOnly><ModelsPage /></RequireAuth>} />
+        <Route
+          path="/models/:provider/*"
+          element={(
+            <RequireAuth adminOnly>
+              <Suspense fallback={<div className="loading">불러오는 중…</div>}>
+                <ModelDetailPage />
+              </Suspense>
+            </RequireAuth>
+          )}
+        />
         <Route
           path="/usage"
           element={(

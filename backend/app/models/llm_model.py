@@ -1,6 +1,6 @@
 """llm_models — 설치된 로컬 LLM 인벤토리.
 
-표준: standards/ai/LLM_INVENTORY_SCHEMA.md (Claude-Opus-bluevlad)
+표준: standards/ai/LLM_INVENTORY_SCHEMA.md (Ai-Legacy-bluevlad)
 3계층 데이터: Layer 1 (자동 수집) + Layer 2 (수동 보강) + Layer 3 (파생 집계, 별도)
 """
 from datetime import date, datetime

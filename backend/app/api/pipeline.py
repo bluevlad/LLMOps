@@ -1,6 +1,6 @@
 """GET /api/pipeline/flow — 파이프라인 Flow Map (토폴로지 + 실행 상태 오버레이).
 
-토폴로지 정본은 service-registry.yaml 의 llm_consumers (Claude-Opus-bluevlad, private).
+토폴로지 정본은 service-registry.yaml 의 llm_consumers (Ai-Legacy-bluevlad, private).
 LLMOps 런타임은 private repo 를 읽을 수 없으므로 여기 스냅샷을 유지한다 —
 consumer 추가/변경 시 registry 를 먼저 고치고 본 토폴로지를 따라 갱신할 것.
 

@@ -1,6 +1,6 @@
 name: Deploy LLMOps to OrbStack (macOS)
 
-# 표준: standards/git/MAIN_PROD_WORKFLOW.md (Claude-Opus-bluevlad)
+# 표준: standards/git/MAIN_PROD_WORKFLOW.md (Ai-Legacy-bluevlad)
 # 발동: prod 브랜치 push 시 self-hosted runner 가 docker compose up
 # 패턴 참조: InfraWatcher/.github/workflows/deploy-macos.yml
 

@@ -1,6 +1,6 @@
 """batch_runs + batch_run_stages — LLM 호출 실행 로그.
 
-표준: standards/observability/BATCH_RUN_REPORTING.md (Claude-Opus-bluevlad)
+표준: standards/observability/BATCH_RUN_REPORTING.md (Ai-Legacy-bluevlad)
 계약: POST /api/batch-runs payload 와 1:1 매핑.
 """
 from datetime import datetime
