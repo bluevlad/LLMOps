@@ -29,10 +29,14 @@ MODEL_ROLES: list[ModelRole] = [
     {"model": "gemma4:12b-mlx", "consumer_id": "allergyinsight-rag-chat", "role": "rag-answer"},
     {"model": "gemma4:12b-mlx", "consumer_id": "allergyinsight-evolution-proposal", "role": "proposal"},
     {"model": "gemma4:12b-mlx", "consumer_id": "standup-weekly-newsletter", "role": "analyze"},
-    # exaone3.5:7.8b — 한국어 콘텐츠 생성 경로 (연구 전용 라이선스 → 골든셋 축적 라인 제외)
+    # exaone3.5:7.8b — 한국어 콘텐츠 생성·정제 경로 (연구 전용 라이선스 → 골든셋 축적 라인 제외)
     {"model": "exaone3.5:7.8b", "consumer_id": "tech-briefing-newsletter", "role": "analyze"},
     {"model": "exaone3.5:7.8b", "consumer_id": "skillradar-synthesis", "role": "compose"},
     {"model": "exaone3.5:7.8b", "consumer_id": "standup-weekly-newsletter", "role": "compose"},
+    # DocPipeline 파싱 정제 슬롯 (REFINE_LLM_MODEL, 2026-09-10) — TIPAIP2 서빙 v4 '오프라인 정제' 역할의 로컬 대응.
+    # DocPipeline 은 insights/rounds 만 push 하고 batch_runs 보고는 아직 없음 → 호출 0 이 "미사용" 이 아님
+    {"model": "exaone3.5:7.8b", "consumer_id": "docpipeline-refine", "role": "refine", "instrumented": False,
+     "note": "파싱 전문 정제(머리말/꼬리말·깨짐·중복 제거) — batch_runs 미연동, 라이선스상 정제물 골든셋 승격 시 검토"},
     # qwen2.5-coder:14b — StandUp stage-2 (주 1회) 유일 실사용
     {"model": "qwen2.5-coder:14b", "consumer_id": "standup-weekly-newsletter", "role": "stage-2"},
     # qwen2.5:7b — 서비스 호출 없음, 평가·파인튜닝 베이스 전용 티어 (Apache 2.0)
