@@ -1,0 +1,136 @@
+# DocPipeline 파싱 정제(refine) 슬롯 후보 비교 — gemma4:12b-mlx vs exaone3.5:7.8b (LLM-as-judge).
+#
+# 목적: DocumetsToAiPipeLine REFINE_LLM_MODEL 기본값 결정 근거. 후보 2종이 파싱 결과에서
+#   머리말/꼬리말·페이지 번호·깨짐 문자·중복 문단을 얼마나 정확히 제거하고, 본문을 한 글자도 바꾸지 않는지 채점.
+# 프롬프트는 DocPipeline app/shared/prompts.py REFINE_SYSTEM_PROMPT + build_refine_prompt 와 동일 —
+#   운영 프롬프트 그대로 평가해야 전환 판단이 유효함. DocPipeline 쪽 변경(REFINE_VERSION) 시 함께 갱신.
+# 운영 호출 옵션과 맞춤: gemma4 think:false. (temperature 0 은 러너 미지원 — 실행 간 편차는 run 을 2회 돌려 확인)
+#
+# 실행 (호스트):
+#   DATABASE_URL=postgresql+asyncpg://llmops_svc:<pw>@localhost:5432/llmops_dev \
+#   OLLAMA_BASE_URL=http://localhost:11434 ANTHROPIC_API_KEY=... \
+#   .venv/bin/python -m scripts.run_comparison --prompt-set scripts/prompts/docpipeline-refine-2026q3.yaml
+
+case_name: docpipeline-refine-slot-2026q3
+prompt_set_id: docpipeline-refine-2026q3
+description: >
+  DocPipeline 파싱 정제 슬롯 — gemma4:12b-mlx vs exaone3.5:7.8b. HWP/PDF/OCR 파싱 결과 6건
+  (머리말·꼬리말·페이지 번호·깨짐 문자·중복 문단·OCR 줄바꿈) 정제 품질을 fidelity/noise_removal/structure 로 채점.
+
+judge:
+  model: claude-opus-5
+  dimensions: [fidelity, noise_removal, structure]
+  rubric: |
+    [Input prompt] 의 <원문> 과 [Model output] 을 비교해 0.0~1.0 으로 채점:
+    - fidelity: 본문 문장·수치·고유명사·장절 번호가 원문 그대로인가. 문장을 바꿔 쓰거나 합치거나 요약·추가한 흔적이 있으면 크게 감점(0.3 이하), 원문에 없는 문장이 생겼으면 0.
+    - noise_removal: 반복 머리말/꼬리말·페이지 번호·깨짐 문자(�, ■■ 등)·페이지 경계 중복 문단·OCR 단어 중간 줄바꿈이 모두 제거됐는가. 남은 노이즈 항목 수에 비례해 감점.
+    - structure: 장·절 제목과 번호, 목록 기호, 표의 행 구분(| 셀 | 셀 |)이 읽을 수 있게 유지됐는가. 마크다운 제목 기호(#)·강조(**)·프롬프트 머리말·<원문> 태그를 새로 붙였으면 감점.
+    score 는 fidelity 에 0.5, noise_removal 0.3, structure 0.2 가중 평균. JSON 만 반환.
+
+models:
+  - id: gemma4:12b-mlx
+    provider: ollama
+    think: false        # thinking 모델 — reasoning 이 출력 토큰 소진 방지 (DocPipeline refine.model_options 와 동일)
+  - id: exaone3.5:7.8b
+    provider: ollama
+
+# DocPipeline REFINE_SYSTEM_PROMPT (REFINE_VERSION 2026-09-10.1) + build_refine_prompt 머리 지시문 — 모든 항목 앞에 공통 삽입
+input_prefix: |
+  너는 문서 파싱(HWP/Office/PDF/OCR) 결과 텍스트를 정제하는 편집자다. 편집 범위는 '제거' 뿐이다. 제거 대상: 페이지마다 반복되는 머리말·꼬리말·페이지 번호, 인코딩 깨짐 문자(�, ▒, ■■ 같은 의미 없는 기호 나열), 페이지 경계에서 그대로 반복된 중복 문단, OCR 로 생긴 단어 중간의 불필요한 줄바꿈. 그 외에는 원문을 한 글자도 바꾸지 않는다 — 문장을 합치거나 바꿔 쓰지 않고, 어미·조사·표현도 그대로 두며, 요약·추가·해석을 하지 않는다. 장·절 제목과 번호(1., 1.1, 가. 등)·목록 기호·수치·고유명사·날짜는 반드시 그대로 유지한다. 표는 원래의 행 구분(| 셀 | 셀 | 형식 등)을 유지한다. 원문에 없는 문장을 절대 만들지 않는다. 마크다운 제목 기호(#)·강조(**)·새 제목 줄을 붙이지 않는다 — 원문의 평문 형식 그대로 둔다. 정제된 본문 텍스트만 출력한다 — 설명·코드 펜스를 붙이지 않는다.
+
+  아래 <원문> 과 </원문> 사이의 파싱 결과를 정제하라. 태그·파일명·이 지시문은 출력하지 말고 정제된 본문만 출력한다.
+
+prompts:
+  - id: hwp-proposal-header-dup
+    input: |
+      <원문>
+      (주)테스트정보 제안서                                    - 1 -
+      1. 사업 개요
+      본 사업은 2024년 공공기관 통합 문서관리 시스템 구축을 목표로 한다. 사업 기간은 계약일로부터 8개월이며, 총 사업비는 3억 5천만원이다.
+      1.1 추진 배경
+      기존 시스템은 2015년 구축되어 노후화되었고, HWP·PDF 등 이기종 문서의 검색이 불가능하다.
+      �� ■■ ���
+      (주)테스트정보 제안서                                    - 2 -
+      1.1 추진 배경
+      기존 시스템은 2015년 구축되어 노후화되었고, HWP·PDF 등 이기종 문서의 검색이 불가능하다.
+      2. 제안 범위
+      | 구분 | 내용 | 비고 |
+      | 문서 수집 | NAS·그룹웨어 연동 | 읽기 전용 |
+      | 검색 | 벡터 검색 + 키워드 | pgvector |
+      본 제안서의 내용은 (주)테스트정보의 자산입니다. 무단 복제를 금합니다.
+      </원문>
+  - id: pdf-notice-page-numbers
+    input: |
+      <원문>
+      2026년 기술개발제품 시범구매 지원계획 공고
+      1. 사업목적
+      중소기업이 개발한 기술개발제품의 초기 판로를 지원하기 위해 공공기관 시범구매를 추진한다.
+      2. 지원대상
+      가. 성능인증(EPC) 또는 우수조달물품 지정을 받은 중소기업
+      나. 신청일 기준 3년 이내 인증 유효
+                                     1 / 3
+      중소벤처기업부 · 공고 제2026-112호
+      3. 신청기간
+      2026. 3. 2.(월) ~ 2026. 3. 31.(화) 18:00 까지
+      4. 제출서류
+      - 신청서 1부
+      - 사업자등록증 사본 1부
+      - 인증서 사본 1부
+                                     2 / 3
+      중소벤처기업부 · 공고 제2026-112호
+      5. 문의처
+      중소벤처기업부 판로정책과 (044-204-7501)
+                                     3 / 3
+      </원문>
+  - id: ocr-linebreaks
+    input: |
+      <원문>
+      제 3 장  시스템 구성
+      본 시스템은 문서 수집 서버, 파싱 워
+      커, 벡터 데이터베이스로 구성된다. 파싱 워커는 HWP 문서를 Libre
+      Office 로 변환한 뒤 텍스트를 추출하
+      며, 추출 실패 시 OCR 엔진으로 폴백한다.
+      3.1 수집 서버
+      NAS 공유 폴더를 읽기 전용으로 마운트하여 신규 파일을 5분 주기로 탐지한다.
+      ─────────────────────────────
+      TIPAIP2 상세설계서 v0.2  |  대외비
+      </원문>
+  - id: table-preserve
+    input: |
+      <원문>
+      4. 연차별 투입 인력
+      | 구분 | 1차년도 | 2차년도 | 3차년도 |
+      | PM | 1 | 1 | 1 |
+      | 개발자 | 4 | 6 | 3 |
+      | 데이터 엔지니어 | 2 | 2 | 1 |
+      ※ 인력은 M/M 기준이며 협력사 인력을 포함한다.
+      4. 연차별 투입 인력
+      | 구분 | 1차년도 | 2차년도 | 3차년도 |
+      | PM | 1 | 1 | 1 |
+      Copyright 2019 테스트정보 All rights reserved.       page 12
+      </원문>
+  - id: clean-text-no-noise
+    input: |
+      <원문>
+      회의록
+      일시: 2021년 5월 14일 14:00
+      참석: 김철수(PM), 이영희(개발), 박민수(고객사 IT팀)
+      안건
+      1. 2단계 일정 조정 — 고객사 요청으로 검수 시작일을 6월 7일에서 6월 14일로 1주 연기한다.
+      2. 인터페이스 정의서 v1.2 승인 — 항목 3건 수정 후 5월 21일 재회람.
+      결정사항
+      - 검수 일정 변경은 변경관리 절차에 따라 CCB 승인 후 확정한다.
+      </원문>
+  - id: garbled-heavy
+    input: |
+      <원문>
+      ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+      정보화전략계획(ISP) 수립 최종보고서
+      ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+      Ⅰ. 사업 개요
+      본 사업은 2008년 4월부터 9월까지 6개월간 수행되었으며, 현행 업무 분석·정보기술 동향 조사·목표 모델 수립의 3단계로 진행하였다.
+      ��������������������
+      Ⅱ. 현행 시스템 분석
+      현행 시스템은 총 12개 업무 시스템으로 구성되어 있으며, 그중 7개가 2003년 이전에 구축되어 유지보수 비용이 연간 4억 원에 달한다.
+      - 12 -                          최종보고서
+      </원문>
