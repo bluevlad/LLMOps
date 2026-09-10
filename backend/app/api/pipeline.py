@@ -45,6 +45,8 @@ _NODES: list[dict[str, Any]] = [
      "status": "active", "description": "QA·로그·픽스 코퍼스"},
     {"id": "src-skillradar", "label": "SkillRadar 크롤링", "layer": "collect", "service": "skillradar",
      "status": "active", "description": "교육과정·세미나·정책 커넥터 (03:00 ingest)"},
+    {"id": "src-docpipeline", "label": "IT 문서 원본 파싱", "layer": "collect", "service": "docpipeline",
+     "status": "active", "description": "26년치 문서 65K — HWP·Office·PDF 네이티브/OCR 파싱 (DocumetsToAiPipeLine)"},
     # LLM 처리 (consumer_id = batch_runs 연동 키)
     {"id": "proc-translate", "label": "논문 번역", "layer": "process", "service": "allergy",
      "status": "active", "consumer_id": "allergyinsight-paper-translate",
@@ -64,6 +66,9 @@ _NODES: list[dict[str, Any]] = [
     {"id": "proc-skillradar", "label": "AI 요약·분류·편성", "layer": "process", "service": "skillradar",
      "status": "active", "consumer_id": "skillradar-synthesis",
      "description": "enrich(gemma4) + digest 편성(exaone) + 임베딩"},
+    {"id": "proc-docpipeline-refine", "label": "파싱 정제 (refine)", "layer": "process", "service": "docpipeline",
+     "status": "pending", "consumer_id": "docpipeline-refine",
+     "description": "머리말/꼬리말·깨짐문자·중복 제거 → refined text (exaone3.5, REFINE_LLM_MODEL) — batch_runs 연동 대기"},
     # 저장·산출
     {"id": "store-chroma", "label": "ChromaDB (논문 지식)", "layer": "store", "service": "allergy",
      "status": "active", "description": "chunk 800/overlap 100, cosine"},
@@ -71,6 +76,8 @@ _NODES: list[dict[str, Any]] = [
      "status": "active", "description": "tech-briefing / 주간 / digest 발송"},
     {"id": "store-pgvector", "label": "pgvector (코퍼스·리소스)", "layer": "store", "service": "standup",
      "status": "active", "description": "standup ×4 + skillradar 768d"},
+    {"id": "store-docpipeline", "label": "문서 청크 벡터 · 개요", "layer": "store", "service": "docpipeline",
+     "status": "active", "description": "정제 텍스트 → 청킹·bge-m3-korean 임베딩·개요(gemma4) — docpipeline-db pgvector"},
     # 평가·자가진화
     {"id": "evolve-golden", "label": "골든셋 (SFT/DPO)", "layer": "evolve", "service": "allergy",
      "status": "active", "description": "전문가 승인 → JSONL export"},
@@ -102,6 +109,9 @@ _EDGES: list[tuple[str, str, str]] = [
     ("proc-standup", "store-pgvector", "flow"),
     ("src-skillradar", "proc-skillradar", "flow"),
     ("proc-skillradar", "store-pgvector", "flow"),
+    ("src-docpipeline", "proc-docpipeline-refine", "flow"),
+    ("proc-docpipeline-refine", "store-docpipeline", "flow"),
+    ("store-docpipeline", "evolve-compare", "flow"),
     ("evolve-golden", "evolve-finetune", "flow"),
     ("proc-kin-answer", "evolve-curation", "flow"),
     ("proc-skillradar", "evolve-curation", "flow"),
