@@ -13,15 +13,17 @@ const SCOPE = [
   { title: '사용 통계', desc: 'consumer 가 보고한 batch_runs 를 모델 단위로 집계 — 호출 · p95 · 토큰 · 실패율.' },
   { title: '수명주기', desc: '60일 미호출 + 90일 비교 0 → 퇴출 후보. 역할 슬롯(enrich/compose/…) 스냅샷.' },
   { title: '이상 징후', desc: '미등록 모델명 호출 · deprecated 모델 호출 · 보고 계약 위반 감지.' },
+  { title: '알림 · 조치', desc: '상주 이탈 · 퇴출 후보 · 실패율 급증을 Slack 으로 알리고, 조치를 기록해 Sunset KPI 로 센다.' },
+  { title: '디스크 · 변경 이력', desc: '모델 파일 용량과 회수 가능 용량, 신규 설치·제거·digest 변경 이력.' },
 ];
 
 // 구현 플랜 v0.3.0 (M0~M3) — 정본 §7·§9
 const PLAN = [
   { code: 'M0', title: '정본 문서', status: 'done', summary: '범위 한정 결정 · S2S 계약 · Sunset KPI 재정의' },
   { code: 'M1', title: 'S2S 읽기 키', status: 'done', summary: 'LLMOPS_READ_KEYS — DocPipeline 이 읽기 API 를 pull' },
-  { code: 'M2', title: '파이프라인 뷰 이관', status: 'active', summary: 'Flow Map · 사용량 · 골든셋 · 비교 이력 → DocPipeline /admin' },
-  { code: "M2'", title: 'LLMOps 축소', status: 'active', summary: '화면을 /models 로 한정, 홈은 모델 관제 개요' },
-  { code: 'M3', title: '관제 강화', status: 'wait', summary: '상주 이탈 · 퇴출 후보 · 실패율 알림, 디스크 사용량, 인벤토리 변경 이력' },
+  { code: 'M2', title: '파이프라인 뷰 이관', status: 'done', summary: 'Flow Map · 사용량 · 골든셋 · 비교 이력 → DocPipeline /admin' },
+  { code: "M2'", title: 'LLMOps 축소', status: 'done', summary: '화면을 /models 로 한정, 홈은 모델 관제 개요' },
+  { code: 'M3', title: '관제 강화', status: 'active', summary: '상주 이탈 · 퇴출 후보 · 실패율 알림(Slack) + 조치 기록, 디스크 사용량, 인벤토리 변경 이력' },
 ];
 
 const STATUS_LABEL = { done: '✅ 완료', active: '🟡 진행', wait: '⏳ 대기' };
@@ -88,6 +90,13 @@ export default function HomePage() {
             <div className="kpi-label">LLM 호출</div>
             <div className="kpi-value">{fmt(kpi?.calls_30d)}</div>
             <div className="kpi-sub">batch_runs stage 단위</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-label">열린 알림</div>
+            <div className="kpi-value">
+              <span className={kpi?.open_alerts > 0 ? 'warn-text' : 'ok-text'}>{fmt(kpi?.open_alerts)}</span>
+            </div>
+            <div className="kpi-sub">{kpi?.unacknowledged_alerts ? `미조치 ${kpi.unacknowledged_alerts}` : '미조치 없음'}</div>
           </div>
           <div className="kpi-card">
             <div className="kpi-label">이상 징후</div>

@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.model_monitor import anomaly_rows, fetch_live
 from app.database.session import get_db
 from app.models.batch_run import BatchRun, BatchRunStage
+from app.models.monitor import LlmAlert
 from app.models.llm_model import LlmModel
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -44,6 +45,8 @@ class KpiOut(BaseModel):
     resident_count: int | None  # 지금 Ollama 메모리에 올라온 모델 수 (None = Ollama 도달 불가)
     calls_30d: int              # 최근 30일 LLM 호출 수 (batch_run_stages)
     anomaly_count_30d: int      # 최근 30일 이상 징후 건수
+    open_alerts: int            # 열린 관제 알림 (M3)
+    unacknowledged_alerts: int  # 그중 조치 미기록
 
 
 class OverviewOut(BaseModel):
@@ -68,6 +71,9 @@ async def load_overview(db: AsyncSession) -> OverviewOut:
         )
     ).scalar_one()
     anomalies = await anomaly_rows(db, PUBLIC_DAYS)
+    open_alerts = (await db.execute(
+        select(LlmAlert.acknowledged_at).where(LlmAlert.resolved_at.is_(None))
+    )).scalars().all()
     live = await fetch_live()
     return OverviewOut(
         days=PUBLIC_DAYS,
@@ -76,6 +82,8 @@ async def load_overview(db: AsyncSession) -> OverviewOut:
             resident_count=len(live.models) if live.reachable else None,
             calls_30d=int(calls),
             anomaly_count_30d=len(anomalies),
+            open_alerts=len(open_alerts),
+            unacknowledged_alerts=sum(1 for a in open_alerts if a is None),
         ),
         ollama_reachable=live.reachable,
         generated_at=datetime.now(timezone.utc),

@@ -1,7 +1,7 @@
 # LLMOps
 
 **MacBook 에 설치된 로컬 LLM 모델(Ollama / MLX) 을 관제하는 에이전트.**
-인벤토리 · 상주 상태 · 호출/지연/토큰 · 수명주기 · 이상 징후를 **모델 단위**로 본다.
+인벤토리 · 상주 상태 · 호출/지연/토큰 · 수명주기 · 이상 징후를 **모델 단위**로 보고, 이상 신호를 알리고 조치를 기록한다.
 
 > 🟡 **상태**: v0.3.0 (모델 관제 에이전트 한정) 전환 중 — M0·M1 완료, M2(파이프라인 뷰 DocPipeline 이관)·M2'(축소) 진행
 > **범위 밖**: consumer 관점 파이프라인 뷰(Flow Map · 사용량 · 골든셋 큐레이션 · 비교 실험 화면) → [DocPipeline `/admin`](https://docpipeline.unmong.com/admin) (LLMOps 읽기 API 를 S2S 키로 pull). 프로세스·컨테이너 헬스 → InfraWatcher
@@ -109,10 +109,27 @@ LLMOps/
 | M1 | `LLMOPS_READ_KEYS` S2S 읽기 인증 (batch-runs/usage/golden-set/comparisons) | ✅ 2026-09-12 |
 | M2 | DocPipeline `/admin` LLM 파이프라인 패널 (Flow Map · 사용량 · 골든셋 · 비교 이력) | 🟡 진행 |
 | M2' | LLMOps 축소 — pipeline/usage/golden-set/comparisons 화면 삭제, 홈 = 모델 관제 개요 | 🟡 진행 |
-| M3 | 관제 강화 — 알림(상주 이탈·퇴출 후보·실패율), 디스크 사용량, 인벤토리 변경 이력 | 대기 |
+| M3 | 관제 강화 — 알림(상주 이탈·퇴출 후보·실패율·계약 위반) + 조치 기록, Slack 발송, 디스크 사용량, 인벤토리 변경 이력 | ✅ 2026-09-12 |
 
 v0.2.0 Phase 3~6 (Consumer DB 통합 · 자동 인사이트 리포트 · SDK · 시각화) 는 폐기. 평가·리포트는 DocPipeline 평가 플랫폼 담당.
 결정 이력은 [정본 README](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/services/llmops/README.md#결정-이력-요약) 참조.
+
+## 관제 알림 (M3)
+
+평가 잡이 10분마다 신호를 모아 `llm_alerts` 에 reconcile 한다 (fingerprint 로 중복 제거, 신호가 사라지면 자동 해결).
+
+| kind | severity | 조건 |
+|------|----------|------|
+| `ollama_unreachable` | critical | Ollama `/api/ps` 도달 불가 |
+| `expected_resident_missing` | warning | `EXPECTED_RESIDENT_MODELS` 모델이 메모리에 없음 |
+| `failure_spike` | warning | 24h 실패 ≥ `ALERT_FAIL_MIN_COUNT` 이고 실패율 ≥ `ALERT_FAIL_RATE_THRESHOLD` |
+| `contract_anomaly` | warning | 24h 보고 계약 위반 (미등록 모델명 · deprecated 호출 · model 누락) |
+| `retire_candidate` | info | 60일 호출 0 + 90일 비교 0 |
+
+- `SLACK_WEBHOOK_URL` 이 있으면 신규 알림 1회 + 해결 시 1회 발송. 비어 있으면 DB 기록만 (화면에는 그대로 표시)
+- **조치 기록** (`POST /api/monitor/alerts/{id}/ack`) 이 Sunset KPI "관제 조치 수" 의 원천
+- 인벤토리 변경(`llm_model_events`)은 폴러가 diff 로 생성 — 신규 설치 · 제거(auto deprecated) · 복귀 · digest/크기 변경
+- 모델 삭제·pull 같은 **조작은 제공하지 않는다** (관측 plane 원칙). 삭제는 호스트에서 `ollama rm`
 
 ## 인증
 

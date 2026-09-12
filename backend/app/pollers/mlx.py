@@ -15,6 +15,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.core.config import settings
 from app.database.session import AsyncSessionLocal
 from app.models.llm_model import LlmModel
+from app.monitor import notify
+from app.pollers.inventory_diff import apply_diff, diff_inventory, load_existing
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +65,12 @@ async def run_once() -> int:
     base = Path(settings.mlx_model_dir)
     rows = scan_mlx_dirs(base)
     if not rows:
+        # 빈 스캔은 removed 판정에 쓰지 않는다 (diff_inventory 안전장치와 동일 취지)
         logger.info("MLX scanner found 0 models at %s", base)
         return 0
 
-    now = datetime.utcnow()
+    # tz-aware UTC — naive utcnow() 는 세션 TZ(KST)로 해석돼 9시간 과거로 기록된다
+    now = datetime.now(timezone.utc)
     for r in rows:
         r["last_seen_at"] = now
 
@@ -81,7 +85,11 @@ async def run_once() -> int:
         },
     )
     async with AsyncSessionLocal() as db:
+        existing = await load_existing(db, "mlx", "macbook-mac1")
+        diff = diff_inventory("mlx", "macbook-mac1", existing, rows)
         await db.execute(stmt)
+        await apply_diff(db, "mlx", "macbook-mac1", diff)
         await db.commit()
-    logger.info("MLX scanner upserted %d models", len(rows))
+    logger.info("MLX scanner upserted %d models (%d events)", len(rows), len(diff.events))
+    await notify.send_inventory_events(diff.notable)
     return len(rows)

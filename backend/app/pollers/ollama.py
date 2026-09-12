@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.database.session import AsyncSessionLocal
 from app.models.llm_model import LlmModel
+from app.monitor import notify
+from app.pollers.inventory_diff import apply_diff, diff_inventory, load_existing
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,8 @@ def _to_row(item: dict[str, Any]) -> dict[str, Any]:
 async def upsert_models(db: AsyncSession, rows: list[dict[str, Any]]) -> int:
     if not rows:
         return 0
-    now = datetime.utcnow()
+    # tz-aware UTC — naive utcnow() 를 timestamptz 에 넣으면 세션 TZ(KST)로 해석돼 9시간 과거로 기록된다
+    now = datetime.now(timezone.utc)
     for r in rows:
         r["last_seen_at"] = now
     stmt = pg_insert(LlmModel).values(rows)
@@ -88,6 +91,11 @@ async def run_once() -> int:
 
     rows = [_to_row(it) for it in items]
     async with AsyncSessionLocal() as db:
+        existing = await load_existing(db, "ollama", "macbook-mac1")
+        diff = diff_inventory("ollama", "macbook-mac1", existing, rows)
         n = await upsert_models(db, rows)
-    logger.info("Ollama poller upserted %d models", n)
+        await apply_diff(db, "ollama", "macbook-mac1", diff)
+        await db.commit()
+    logger.info("Ollama poller upserted %d models (%d events)", n, len(diff.events))
+    await notify.send_inventory_events(diff.notable)
     return n

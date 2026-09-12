@@ -34,3 +34,14 @@ def test_ollama_to_row_mapping() -> None:
     assert row["quantization"] == "Q4_K_M"
     assert row["format"] == "gguf"
     assert row["source_modified_at"] is not None
+
+
+def test_poller_timestamps_are_tz_aware() -> None:
+    """naive utcnow() 를 timestamptz 에 쓰면 세션 TZ(KST)로 해석돼 9시간 과거로 기록된다 (2026-09-12 회귀)."""
+    import inspect
+
+    from app.pollers import mlx as mlx_poller
+
+    for mod in (ollama_poller, mlx_poller):
+        src = inspect.getsource(mod)
+        assert "datetime.utcnow()" not in src, f"{mod.__name__}: naive utcnow() 금지 — datetime.now(timezone.utc) 사용"
