@@ -6,10 +6,13 @@ LLMOPS_ADMIN_EMAILS allowlist 기반 — 목록 외 로그인은 llmops_guest (�
 """
 from __future__ import annotations
 
+import json
+import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
@@ -22,6 +25,7 @@ from app.database.session import get_db
 from app.models.user import LlmopsUser
 
 bearer_scheme = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 # -- JWT --------------------------------------------------------------------
@@ -120,3 +124,51 @@ def require_admin(user: LlmopsUser = Depends(get_current_user)) -> LlmopsUser:
     if user.role != "llmops_admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin only")
     return user
+
+
+# -- S2S 읽기 키 (v0.3.0) -----------------------------------------------------
+#
+# DocPipeline 등이 LLMOps 읽기 API(batch-runs/usage/golden-set/comparisons)를 pull 할 때
+# X-API-Key 헤더로 인증한다. 키는 LLMOPS_READ_KEYS (JSON {client_id: key}). 인증된 S2S 요청은
+# DB 에 없는 합성 viewer 사용자로 귀속되며 curated_by 등에는 "s2s:<client_id>" 가 기록된다.
+
+S2S_EMAIL_PREFIX = "s2s:"
+
+
+def load_read_keys() -> dict[str, str]:
+    raw = (settings.llmops_read_keys or "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("LLMOPS_READ_KEYS is not valid JSON; ignoring all read keys")
+        return {}
+    return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+
+
+def resolve_s2s_client(x_api_key: str) -> str | None:
+    """키와 일치하는 client_id 를 돌려준다 (없으면 None). 타이밍 안전 비교."""
+    for client_id, key in load_read_keys().items():
+        if key and secrets.compare_digest(x_api_key, key):
+            return client_id
+    return None
+
+
+def s2s_user(client_id: str) -> LlmopsUser:
+    return LlmopsUser(id=0, email=f"{S2S_EMAIL_PREFIX}{client_id}", name=client_id, role="llmops_viewer")
+
+
+async def require_member_or_s2s(
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> LlmopsUser:
+    """X-API-Key 가 있으면 S2S 읽기 키 인증(합성 viewer), 없으면 JWT member 인증."""
+    if x_api_key is not None:
+        client_id = resolve_s2s_client(x_api_key)
+        if client_id is None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid API key")
+        return s2s_user(client_id)
+    user = await get_current_user(creds=creds, db=db)
+    return require_member(user=user)

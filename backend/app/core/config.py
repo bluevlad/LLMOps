@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="")
     gemini_api_key: str = Field(default="")
 
+    # --- S2S 읽기 키 (v0.3.0 — DocPipeline 등 다른 서비스가 읽기 API 를 pull) ---
+    # JSON object {client_id: api_key}. 헤더 X-API-Key 로 검증. ingest 키(LLMOPS_INGEST_KEYS)와 별도.
+    llmops_read_keys: str = Field(default="{}")
+
     # --- Batch run content capture (표준 v0.3.0 §2-β) ---
     # 샘플링 결정은 consumer(클라이언트)가 한다. 서버는 받은 prompt/response 본문에
     # 대해 방어적 truncation 만 강제 — consumer 오작동 시 저장소 폭주 방지.
