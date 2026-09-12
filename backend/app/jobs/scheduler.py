@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -46,7 +46,10 @@ def start_scheduler() -> None:
             "interval",
             seconds=settings.alert_eval_interval_seconds,
             id="alert_evaluator",
-            next_run_time=datetime.now() + timedelta(seconds=90),  # 기동 직후 1회
+            # tz-aware 로 줘야 한다 — naive 를 주면 APScheduler 가 스케줄러 TZ(KST)로 해석해
+            # 컨테이너(UTC) 기준 9시간 과거가 되고 첫 실행이 misfire 로 건너뛰어진다 (2026-09-12)
+            next_run_time=datetime.now(timezone.utc) + timedelta(seconds=90),
+            misfire_grace_time=300,
             max_instances=1,
             coalesce=True,
         )
