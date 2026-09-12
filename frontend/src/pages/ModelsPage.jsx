@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import AlertsPanel from '../components/AlertsPanel.jsx';
+import DiskAndEvents from '../components/DiskAndEvents.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import {
   ANOMALY_LABEL, LIFECYCLE_CLASS, ago, detailPath, fmtNum, formatBytes, formatMs, pct,
@@ -116,7 +118,7 @@ export default function ModelsPage() {
       <header className="row">
         <div>
           <h1><Link to="/">LLMOps</Link> · 모델 모니터링</h1>
-          <p className="subtitle">설치된 로컬 LLM (Ollama + MLX) — 인벤토리 · 상주 상태 · 최근 {DAYS}일 사용 · 수명주기</p>
+          <p className="subtitle">설치된 로컬 LLM (Ollama + MLX) — 인벤토리 · 상주 상태 · 최근 {DAYS}일 사용 · 수명주기 · 관제 알림</p>
         </div>
         <div className="row-end">
           <span className="muted">{user.email} · <code>{user.role}</code></span>
@@ -125,6 +127,8 @@ export default function ModelsPage() {
       </header>
 
       {error && <section><pre className="error">{error}</pre></section>}
+
+      <AlertsPanel isAdmin={user.role === 'llmops_admin'} />
 
       <section>
         <h2>요약 (최근 {DAYS}일)</h2>
@@ -290,6 +294,8 @@ export default function ModelsPage() {
           </table>
         )}
       </section>
+
+      <DiskAndEvents />
     </div>
   );
 }

@@ -120,3 +120,5 @@ decision 값: `sunset` / `conditional-hold` / `keep-active`
 - **InfraWatcher 와 기능 중복 금지** — 프로세스·컨테이너 헬스는 InfraWatcher, 모델 단위 관제는 LLMOps
 - **파이프라인 뷰를 LLMOps 에 다시 만들지 않기** — Flow Map·사용량·골든셋 큐레이션·비교 화면은 DocPipeline `/admin` (LLMOps 는 읽기 API 만 제공). 토폴로지 정본은 DocPipeline `config/llm_flow_map.yaml`
 - **`model_roles.KNOWN_CONSUMER_IDS` 우회 금지** — consumer 추가 시 registry → 스냅샷 순서
+- **timestamptz 컬럼에 naive `datetime.utcnow()` 금지** — 세션 TZ(KST)로 해석돼 9시간 과거로 기록됨. `datetime.now(timezone.utc)` 사용 (2026-09-12 폴러 회귀)
+- **LLMOps 에서 모델 조작(삭제·pull) 제공 금지** — 관측 plane 원칙. 알림은 근거만 주고 실행은 호스트에서

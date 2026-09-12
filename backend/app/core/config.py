@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="")
     gemini_api_key: str = Field(default="")
 
+    # --- 관제 알림 (v0.3.0 M3) ---
+    slack_webhook_url: str = Field(default="")               # 비우면 Slack 발송 안 함 (DB 기록만)
+    expected_resident_models: str = Field(default="")        # 콤마 구분 — Ollama 에 항상 올라와 있어야 하는 모델 (예: gemma4:12b-mlx)
+    alert_eval_interval_seconds: int = Field(default=600)    # 알림 평가 잡 주기 (0 = 비활성)
+    alert_fail_rate_threshold: float = Field(default=0.2)    # 24h 실패율 이 이상 + 건수 이상이면 failure_spike
+    alert_fail_min_count: int = Field(default=3)
+
     # --- S2S 읽기 키 (v0.3.0 — DocPipeline 등 다른 서비스가 읽기 API 를 pull) ---
     # JSON object {client_id: api_key}. 헤더 X-API-Key 로 검증. ingest 키(LLMOPS_INGEST_KEYS)와 별도.
     llmops_read_keys: str = Field(default="{}")
@@ -66,6 +73,10 @@ class Settings(BaseSettings):
     # 샘플링 결정은 consumer(클라이언트)가 한다. 서버는 받은 prompt/response 본문에
     # 대해 방어적 truncation 만 강제 — consumer 오작동 시 저장소 폭주 방지.
     batch_content_max_chars: int = Field(default=8000)
+
+    @property
+    def expected_resident_models_list(self) -> list[str]:
+        return [m.strip() for m in self.expected_resident_models.split(",") if m.strip()]
 
     @property
     def backend_cors_origins_list(self) -> list[str]:

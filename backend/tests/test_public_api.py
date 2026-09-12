@@ -20,7 +20,8 @@ def client(monkeypatch):
 def _overview() -> public.OverviewOut:
     return public.OverviewOut(
         days=30,
-        kpi=public.KpiOut(model_count=6, resident_count=2, calls_30d=1234, anomaly_count_30d=1),
+        kpi=public.KpiOut(model_count=6, resident_count=2, calls_30d=1234, anomaly_count_30d=1,
+                          open_alerts=2, unacknowledged_alerts=1),
         ollama_reachable=True,
         generated_at=datetime.now(timezone.utc),
     )
@@ -34,7 +35,8 @@ def test_overview_public_no_auth(client, monkeypatch) -> None:
     res = client.get("/api/public/overview")
     assert res.status_code == 200
     body = res.json()
-    assert body["kpi"] == {"model_count": 6, "resident_count": 2, "calls_30d": 1234, "anomaly_count_30d": 1}
+    assert body["kpi"] == {"model_count": 6, "resident_count": 2, "calls_30d": 1234,
+                           "anomaly_count_30d": 1, "open_alerts": 2, "unacknowledged_alerts": 1}
     assert body["days"] == 30 and body["ollama_reachable"] is True
 
 
