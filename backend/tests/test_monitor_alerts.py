@@ -256,3 +256,14 @@ def test_diff_empty_incoming_does_not_mass_deprecate() -> None:
     existing = [_existing("a:7b", size=1), _existing("b:7b", size=1)]
     d = diff_inventory("ollama", "macbook-mac1", existing, [], now=NOW)
     assert d.events == [] and d.deprecate == []
+
+
+def test_scheduler_uses_tz_aware_next_run_time() -> None:
+    """naive datetime 을 next_run_time 으로 주면 스케줄러 TZ(KST)로 해석돼 첫 실행이 misfire 된다 (2026-09-12 회귀)."""
+    import inspect
+
+    from app.jobs import scheduler
+
+    src = inspect.getsource(scheduler)
+    assert "datetime.now()" not in src, "next_run_time 은 tz-aware 여야 한다"
+    assert "datetime.now(timezone.utc)" in src
