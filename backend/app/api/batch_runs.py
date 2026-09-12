@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.security import require_member
+from app.core.security import require_member_or_s2s
 from app.database.session import AsyncSessionLocal, get_db
 from app.models.batch_run import BatchRun, BatchRunStage
 from app.models.user import LlmopsUser
@@ -227,7 +227,7 @@ async def list_batch_runs(
     run_status: str | None = Query(None, pattern="^(success|failure|partial)$"),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(require_member),
+    _user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> list[BatchRunOut]:
     stmt = select(BatchRun).order_by(BatchRun.started_at.desc()).limit(limit)
     if consumer_id:
@@ -259,7 +259,7 @@ async def list_batch_runs(
 
 
 async def consumer_summaries(db: AsyncSession, days: int) -> list[ConsumerSummaryOut]:
-    """consumer 별 최근 N일 실행 집계 — /batch-runs/summary 와 /pipeline/flow 공용."""
+    """consumer 별 최근 N일 실행 집계 — /batch-runs/summary (DocPipeline Flow Map 오버레이가 S2S 로 pull)."""
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
     run_rows = (await db.execute(
@@ -312,6 +312,6 @@ async def consumer_summaries(db: AsyncSession, days: int) -> list[ConsumerSummar
 async def batch_runs_summary(
     days: int = Query(30, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(require_member),
+    _user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> list[ConsumerSummaryOut]:
     return await consumer_summaries(db, days)

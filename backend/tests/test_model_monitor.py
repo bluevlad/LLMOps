@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 
 from app.api import model_roles
 from app.api.model_monitor import parse_ps_payload
-from app.api.pipeline import _NODES
 from app.main import app
 
 NOW = datetime(2026, 9, 10, tzinfo=timezone.utc)
@@ -19,9 +18,9 @@ def test_monitor_endpoints_require_auth() -> None:
     assert client.get("/api/models/detail", params={"provider": "ollama", "model_id": "x"}).status_code == 401
 
 
-def test_snapshot_consumers_match_pipeline_topology() -> None:
-    known = {n["consumer_id"] for n in _NODES if n.get("consumer_id")}
-    assert model_roles.snapshot_consistency_errors(known) == []
+def test_snapshot_consumers_match_registry_snapshot() -> None:
+    assert model_roles.snapshot_consistency_errors() == []
+    assert model_roles.snapshot_consistency_errors(model_roles.KNOWN_CONSUMER_IDS) == []
 
 
 def test_snapshot_covers_active_five_models() -> None:

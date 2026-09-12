@@ -1,28 +1,28 @@
 """공개 read-only API — 관리자 로그인 전 홈 화면용 (인증 없음).
 
-공개 범위는 화이트리스트: KPI 집계 숫자 + 파이프라인 Flow Map(집계 통계만).
-모델 목록·비교 결과·프롬프트/응답 내용 등 상세는 기존 인증 API 로만 접근.
+공개 범위는 화이트리스트: 모델 관제 KPI 집계 숫자만 (v0.3.0).
+모델 목록·호출 내용 등 상세는 기존 인증 API 로만 접근.
 익명 트래픽으로부터 DB 를 보호하기 위해 응답을 60초 in-memory 캐시.
 """
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.pipeline import FlowOut, build_flow
+from app.api.model_monitor import anomaly_rows, fetch_live
 from app.database.session import get_db
-from app.models.comparison import ComparisonRun
+from app.models.batch_run import BatchRun, BatchRunStage
 from app.models.llm_model import LlmModel
 
 router = APIRouter(prefix="/public", tags=["public"])
 
-PUBLIC_FLOW_DAYS = 30
+PUBLIC_DAYS = 30
 _CACHE_TTL_SECONDS = 60.0
 _cache: dict[str, tuple[float, Any]] = {}
 
@@ -38,26 +38,46 @@ async def _cached(key: str, loader: Callable[[], Awaitable[Any]]) -> Any:
 
 
 class KpiOut(BaseModel):
-    model_count: int          # 활성 모델 수 (deprecated 제외)
-    comparison_count: int     # 비교 실험 수
+    model_config = ConfigDict(protected_namespaces=())
+
+    model_count: int            # 활성 모델 수 (deprecated 제외)
+    resident_count: int | None  # 지금 Ollama 메모리에 올라온 모델 수 (None = Ollama 도달 불가)
+    calls_30d: int              # 최근 30일 LLM 호출 수 (batch_run_stages)
+    anomaly_count_30d: int      # 최근 30일 이상 징후 건수
 
 
 class OverviewOut(BaseModel):
+    days: int
     kpi: KpiOut
+    ollama_reachable: bool
     generated_at: datetime
 
 
 async def load_overview(db: AsyncSession) -> OverviewOut:
+    since = datetime.now(timezone.utc) - timedelta(days=PUBLIC_DAYS)
     model_count = (
         await db.execute(
             select(func.count()).select_from(LlmModel).where(LlmModel.deprecated_at.is_(None))
         )
     ).scalar_one()
-    comparison_count = (
-        await db.execute(select(func.count()).select_from(ComparisonRun))
+    calls = (
+        await db.execute(
+            select(func.count(BatchRunStage.id))
+            .join(BatchRun, BatchRunStage.batch_run_id == BatchRun.id)
+            .where(BatchRun.started_at >= since)
+        )
     ).scalar_one()
+    anomalies = await anomaly_rows(db, PUBLIC_DAYS)
+    live = await fetch_live()
     return OverviewOut(
-        kpi=KpiOut(model_count=model_count, comparison_count=comparison_count),
+        days=PUBLIC_DAYS,
+        kpi=KpiOut(
+            model_count=model_count,
+            resident_count=len(live.models) if live.reachable else None,
+            calls_30d=int(calls),
+            anomaly_count_30d=len(anomalies),
+        ),
+        ollama_reachable=live.reachable,
         generated_at=datetime.now(timezone.utc),
     )
 
@@ -65,9 +85,3 @@ async def load_overview(db: AsyncSession) -> OverviewOut:
 @router.get("/overview", response_model=OverviewOut)
 async def public_overview(db: AsyncSession = Depends(get_db)) -> OverviewOut:
     return await _cached("overview", lambda: load_overview(db))
-
-
-@router.get("/flow", response_model=FlowOut)
-async def public_flow(db: AsyncSession = Depends(get_db)) -> FlowOut:
-    # days 는 30일 고정 — 공개 화면 명세(최근 30일) 외 파라미터를 열지 않음
-    return await _cached("flow", lambda: build_flow(db, PUBLIC_FLOW_DAYS))

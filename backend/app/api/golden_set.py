@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import require_member
+from app.core.security import require_member_or_s2s
 from app.database.session import get_db
 from app.models.batch_run import BatchRun, BatchRunStage
 from app.models.golden_set import GoldenSetItem
@@ -73,7 +73,7 @@ class GoldenSetSummaryOut(BaseModel):
 async def promote_stage(
     body: PromoteIn,
     db: AsyncSession = Depends(get_db),
-    user: LlmopsUser = Depends(require_member),
+    user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> GoldenSetItemOut:
     """content 샘플이 보고된 stage 를 골든셋 후보로 승격."""
     row = (await db.execute(
@@ -119,7 +119,7 @@ async def list_items(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(require_member),
+    _user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> GoldenSetListOut:
     filters = []
     if status:
@@ -146,7 +146,7 @@ async def list_items(
 @router.get("/summary", response_model=GoldenSetSummaryOut)
 async def summary(
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(require_member),
+    _user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> GoldenSetSummaryOut:
     status_rows = (await db.execute(
         select(GoldenSetItem.status, func.count(GoldenSetItem.id))
@@ -205,7 +205,7 @@ async def list_promotable(
     days: int = Query(30, ge=1, le=365),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(require_member),
+    _user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> list[PromotableStageOut]:
     """content 샘플 보유 + 아직 승격되지 않은 stage 목록 (승격 후보 풀)."""
     from datetime import timedelta, timezone
@@ -250,7 +250,7 @@ async def curate_item(
     item_id: int,
     body: CurateIn,
     db: AsyncSession = Depends(get_db),
-    user: LlmopsUser = Depends(require_member),
+    user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> GoldenSetItemOut:
     item = await db.get(GoldenSetItem, item_id)
     if item is None:
@@ -276,7 +276,7 @@ async def export_jsonl(
     status: str = Query("approved", pattern="^(candidate|approved|rejected)$"),
     consumer_id: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _user: LlmopsUser = Depends(require_member),
+    _user: LlmopsUser = Depends(require_member_or_s2s),
 ) -> StreamingResponse:
     """SFT 용 JSONL export — gold_response 없으면 response(초안 채택)를 골든으로."""
     filters = [GoldenSetItem.status == status]

@@ -1,9 +1,10 @@
 """모델 ↔ consumer 역할 스냅샷 + 수명주기 판정 (모델 모니터링 화면용).
 
 정본은 service-registry.yaml 의 llm_consumers (Ai-Legacy-bluevlad, private).
-LLMOps 런타임은 private repo 를 읽을 수 없으므로 pipeline.py 의 토폴로지와 같은 방식으로
-여기 스냅샷을 유지한다 — 모델/슬롯 변경 시 registry 를 먼저 고치고 본 스냅샷을 따라 갱신할 것.
-(여기서 consumer 를 새로 "정의"하지 않는다. consumer_id 는 pipeline._NODES 와 일치해야 한다.)
+LLMOps 런타임은 private repo 를 읽을 수 없으므로 여기 스냅샷을 유지한다 —
+모델/슬롯 변경 시 registry 를 먼저 고치고 본 스냅샷을 따라 갱신할 것.
+(여기서 consumer 를 새로 "정의"하지 않는다. consumer_id 는 KNOWN_CONSUMER_IDS 에 있어야 하며,
+ 파이프라인 토폴로지(Flow Map)는 v0.3.0 부터 DocPipeline config/llm_flow_map.yaml 이 가진다.)
 
 role_tags 는 llm_models.role_tags(Layer 2, 수동) 가 비어 있을 때 이 스냅샷으로 채운다.
 """
@@ -20,6 +21,20 @@ class ModelRole(TypedDict, total=False):
     instrumented: bool    # False = 해당 경로는 batch_runs 보고가 없음 (호출 0 이 "미사용" 이 아님)
     note: str
 
+
+# service-registry.yaml llm_consumers 의 id 스냅샷 (schema 0.4.0, 2026-09-10 docpipeline-refine 포함)
+KNOWN_CONSUMER_IDS: frozenset[str] = frozenset({
+    "standup-weekly-newsletter",
+    "allergyinsight-rag-chat",
+    "allergyinsight-paper-translate",
+    "auto-tobe-agent-b",
+    "medium-digest-agent",
+    "tech-briefing-newsletter",
+    "skillradar-synthesis",
+    "allergyinsight-evolution-proposal",
+    "docpipeline-refine",
+    "allergyinsight-kin-pipeline",
+})
 
 # 2026-09-05 인벤토리 정리 이후 활성 5개 모델 기준 (memory: model-inventory-cleanup-2026-09)
 MODEL_ROLES: list[ModelRole] = [
@@ -117,8 +132,8 @@ def lifecycle_status(
     return "retire-candidate"
 
 
-def snapshot_consistency_errors(known_consumer_ids: set[str]) -> list[str]:
-    """pipeline._NODES 의 consumer_id 와 어긋난 항목 — 테스트에서 검증."""
+def snapshot_consistency_errors(known_consumer_ids: set[str] | frozenset[str] = KNOWN_CONSUMER_IDS) -> list[str]:
+    """registry consumer_id 스냅샷과 어긋난 항목 — 테스트에서 검증."""
     errors: list[str] = []
     for r in MODEL_ROLES:
         cid = r.get("consumer_id")
