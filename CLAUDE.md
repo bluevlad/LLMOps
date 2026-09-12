@@ -11,9 +11,11 @@
 ## 프로젝트 개요
 
 - **프로젝트명**: LLMOps
-- **설명**: 로컬 LLM (Ollama / MLX) 사용 현황·ROI 통합 관제 대시보드
+- **설명**: MacBook 에 설치된 로컬 LLM 모델(Ollama / MLX) 관제 에이전트 — 인벤토리·상주·호출·수명주기·이상 징후를 **모델 단위**로 (v0.3.0, 2026-09-12)
+- **범위 밖**: consumer 관점 파이프라인 뷰(Flow Map·사용량·골든셋 큐레이션·비교 실험 화면) → DocPipeline `/admin`. 프로세스·컨테이너 헬스 → InfraWatcher
+- **정본 플랜**: [`services/llmops/MODEL_MONITOR_AGENT_PLAN.md`](https://github.com/bluevlad/Ai-Legacy-bluevlad/blob/main/services/llmops/MODEL_MONITOR_AGENT_PLAN.md)
 - **GitHub**: https://github.com/bluevlad/LLMOps (public)
-- **상태**: Phase 1 (Foundation) 진행 중
+- **상태**: v0.3.0 전환 중 — M0·M1 완료, M2(DocPipeline 이관)·M2'(축소) 진행, M3(관제 강화) 대기
 - **Sunset 평가일**: 2026-11-18 — [README §Sunset Criteria](./README.md#️-sunset-criteria-2026-11-18-평가)
 
 ## 기술 스택
@@ -22,6 +24,7 @@
 - **Frontend**: React 18 + Vite
 - **Database**: PostgreSQL 15 (공유 컨테이너) — DB `llmops`/`llmops_dev` (단일 DB)
 - **Auth**: Google OAuth 2.0 ID Token + JWT (LLMOps 자체 발급) — `LLMOPS_ADMIN_EMAILS` allowlist 만 admin, 그 외 로그인은 `llmops_guest` (데이터 접근 불가, 로그인 이력만 기록)
+- **S2S 읽기**: `X-API-Key` ↔ `LLMOPS_READ_KEYS` (JSON `{client_id: key}`) — DocPipeline 이 batch-runs/usage/golden-set/comparisons 읽기 API 를 pull. ingest 키(`LLMOPS_INGEST_KEYS`)와 별도
 - **수집 대상**: Ollama REST (`/api/tags`), MLX 디렉토리 (`~/.cache/huggingface/`)
 
 ## 포트 / 도메인
@@ -101,7 +104,7 @@ npm run dev    # → http://localhost:4110
 ## Sunset 조항 (재확인)
 
 본 서비스는 2026-11-18 자기 데이터로 평가 → 자동 종료 / 조건부 유지 / 정식 유지 3분류.
-README §Sunset Criteria 참조. 평가 commit 메시지 강제 포맷:
+v0.3.0 KPI = **관제 신호 기반 모델 조치 수** (README §Sunset Criteria 참조). 평가 commit 메시지 강제 포맷:
 
 ```
 chore(llmops): 6-month review — <decision>
@@ -114,4 +117,6 @@ decision 값: `sunset` / `conditional-hold` / `keep-active`
 - **/api/batch-runs 수신 시 동기 처리 금지** — 받자마자 ACK, 분석은 background
 - **모델 비활성화 시 DELETE 금지** — `deprecated_at` 마크만 (과거 join 보존)
 - **service-registry 우회하여 consumer 정의 금지** — SSoT 위반 → 분석 깨짐
-- **InfraWatcher 와 기능 중복 금지** — 헬스체크는 InfraWatcher, 분석은 LLMOps
+- **InfraWatcher 와 기능 중복 금지** — 프로세스·컨테이너 헬스는 InfraWatcher, 모델 단위 관제는 LLMOps
+- **파이프라인 뷰를 LLMOps 에 다시 만들지 않기** — Flow Map·사용량·골든셋 큐레이션·비교 화면은 DocPipeline `/admin` (LLMOps 는 읽기 API 만 제공). 토폴로지 정본은 DocPipeline `config/llm_flow_map.yaml`
+- **`model_roles.KNOWN_CONSUMER_IDS` 우회 금지** — consumer 추가 시 registry → 스냅샷 순서

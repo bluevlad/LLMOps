@@ -1,4 +1,4 @@
-"""공개 API(/api/public/*) — 인증 없이 접근 가능 + 60초 캐시."""
+"""공개 API(/api/public/*) — 인증 없이 접근 가능 + 60초 캐시 (v0.3.0: 모델 관제 KPI 만)."""
 from datetime import datetime, timezone
 
 import pytest
@@ -19,7 +19,9 @@ def client(monkeypatch):
 
 def _overview() -> public.OverviewOut:
     return public.OverviewOut(
-        kpi=public.KpiOut(model_count=3, comparison_count=2),
+        days=30,
+        kpi=public.KpiOut(model_count=6, resident_count=2, calls_30d=1234, anomaly_count_30d=1),
+        ollama_reachable=True,
         generated_at=datetime.now(timezone.utc),
     )
 
@@ -31,7 +33,9 @@ def test_overview_public_no_auth(client, monkeypatch) -> None:
     monkeypatch.setattr(public, "load_overview", fake_load)
     res = client.get("/api/public/overview")
     assert res.status_code == 200
-    assert res.json()["kpi"] == {"model_count": 3, "comparison_count": 2}
+    body = res.json()
+    assert body["kpi"] == {"model_count": 6, "resident_count": 2, "calls_30d": 1234, "anomaly_count_30d": 1}
+    assert body["days"] == 30 and body["ollama_reachable"] is True
 
 
 def test_overview_cached_within_ttl(client, monkeypatch) -> None:
@@ -47,25 +51,8 @@ def test_overview_cached_within_ttl(client, monkeypatch) -> None:
     assert calls["n"] == 1
 
 
-def test_flow_public_no_auth_fixed_30_days(client, monkeypatch) -> None:
-    captured = {}
-
-    async def fake_build(db, days):
-        captured["days"] = days
-        from app.api.pipeline import FlowOut
-
-        return FlowOut(
-            layers=[], nodes=[], edges=[], days=days,
-            generated_at=datetime.now(timezone.utc),
-        )
-
-    monkeypatch.setattr(public, "build_flow", fake_build)
-    res = client.get("/api/public/flow")
-    assert res.status_code == 200
-    assert captured["days"] == 30
-    # 공개 endpoint 는 days 파라미터를 열지 않음 — 전달해도 30일 고정
-    assert client.get("/api/public/flow?days=365").json()["days"] == 30
-
-
-def test_admin_flow_still_requires_auth() -> None:
-    assert TestClient(app).get("/api/pipeline/flow").status_code == 401
+def test_flow_endpoints_removed() -> None:
+    """Flow Map 은 DocPipeline 으로 이관 — LLMOps 에서는 더 이상 제공하지 않는다."""
+    client = TestClient(app)
+    assert client.get("/api/public/flow").status_code == 404
+    assert client.get("/api/pipeline/flow").status_code == 404

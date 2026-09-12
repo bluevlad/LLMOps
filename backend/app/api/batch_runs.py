@@ -259,7 +259,7 @@ async def list_batch_runs(
 
 
 async def consumer_summaries(db: AsyncSession, days: int) -> list[ConsumerSummaryOut]:
-    """consumer 별 최근 N일 실행 집계 — /batch-runs/summary 와 /pipeline/flow 공용."""
+    """consumer 별 최근 N일 실행 집계 — /batch-runs/summary (DocPipeline Flow Map 오버레이가 S2S 로 pull)."""
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
     run_rows = (await db.execute(

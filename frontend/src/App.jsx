@@ -6,12 +6,11 @@ import HomePage from './pages/HomePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ModelsPage from './pages/ModelsPage.jsx';
 
-// recharts / react-flow 가 무거워서 차트 페이지는 코드 분할
-const ComparisonsPage = lazy(() => import('./pages/ComparisonsPage.jsx'));
-const UsagePage = lazy(() => import('./pages/UsagePage.jsx'));
-const GoldenSetPage = lazy(() => import('./pages/GoldenSetPage.jsx'));
+// recharts 가 무거워서 상세 페이지는 코드 분할
 const ModelDetailPage = lazy(() => import('./pages/ModelDetailPage.jsx'));
 
+// v0.3.0 — 모델 관제 에이전트 한정. 파이프라인 뷰(Flow Map·usage·golden-set·comparisons)는
+// DocPipeline /admin 으로 이관 (정본: Ai-Legacy-bluevlad/services/llmops/MODEL_MONITOR_AGENT_PLAN.md)
 export default function App() {
   return (
     <AuthProvider>
@@ -25,36 +24,6 @@ export default function App() {
             <RequireAuth adminOnly>
               <Suspense fallback={<div className="loading">불러오는 중…</div>}>
                 <ModelDetailPage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        />
-        <Route
-          path="/usage"
-          element={(
-            <RequireAuth adminOnly>
-              <Suspense fallback={<div className="loading">불러오는 중…</div>}>
-                <UsagePage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        />
-        <Route
-          path="/golden-set"
-          element={(
-            <RequireAuth adminOnly>
-              <Suspense fallback={<div className="loading">불러오는 중…</div>}>
-                <GoldenSetPage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        />
-        <Route
-          path="/comparisons"
-          element={(
-            <RequireAuth adminOnly>
-              <Suspense fallback={<div className="loading">불러오는 중…</div>}>
-                <ComparisonsPage />
               </Suspense>
             </RequireAuth>
           )}

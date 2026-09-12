@@ -13,7 +13,6 @@ from app.api.comparisons import router as comparisons_router
 from app.api.golden_set import router as golden_set_router
 from app.api.model_monitor import router as model_monitor_router
 from app.api.models import router as models_router
-from app.api.pipeline import router as pipeline_router
 from app.api.public import router as public_router
 from app.api.usage import router as usage_router
 from app.core.config import settings
@@ -69,7 +68,6 @@ def create_app() -> FastAPI:
     app.include_router(batch_runs_router, prefix="/api")
     app.include_router(comparisons_router, prefix="/api")
     app.include_router(usage_router, prefix="/api")
-    app.include_router(pipeline_router, prefix="/api")
     app.include_router(golden_set_router, prefix="/api")
     app.include_router(public_router, prefix="/api")
 

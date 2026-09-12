@@ -263,7 +263,7 @@ export default function ModelDetailPage() {
                   <dt>승인</dt><dd className="ok-text">{data.golden_set.approved}</dd>
                   <dt>반려</dt><dd>{data.golden_set.rejected}</dd>
                 </dl>
-                <p className="small" style={{ marginTop: 8 }}><Link to="/golden-set">골든셋 큐레이션 →</Link></p>
+                <p className="small" style={{ marginTop: 8 }}><a href="https://docpipeline.unmong.com/admin#llm-golden" target="_blank" rel="noreferrer">골든셋 큐레이션 (DocPipeline) →</a></p>
               </div>
             </div>
 
@@ -286,7 +286,7 @@ export default function ModelDetailPage() {
                 <tbody>
                   {data.comparisons.map((c) => (
                     <tr key={c.id}>
-                      <td><Link to="/comparisons">#{c.id}</Link></td>
+                      <td>#{c.id}</td>
                       <td>{c.case_name}<div className="muted small">{c.prompt_set_id}</div></td>
                       <td className="small"><code>{c.judge_model || '-'}</code></td>
                       <td className="small muted">{formatDate(c.started_at)}</td>
