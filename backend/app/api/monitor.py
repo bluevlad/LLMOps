@@ -1,7 +1,7 @@
 """관제 API (v0.3.0 M3) — 알림 목록·확인(조치 기록), 인벤토리 변경 이력, 디스크 사용량.
 
 /api/monitor/alerts        : 열린/해결된 알림 (kind·severity 필터)
-/api/monitor/alerts/{id}/ack : 조치 기록 — Sunset KPI(관제 조치 수) 의 원천
+/api/monitor/alerts/{id}/ack : 확인 기록 (실제 조치는 /actions)
 /api/monitor/alerts/evaluate : 즉시 재평가 (admin)
 /api/monitor/events        : 인벤토리 변경 이력 (discovered/removed/reappeared/digest_changed/size_changed)
 /api/monitor/disk          : 모델 파일 디스크 사용량 + 회수 가능(deprecated 인데 설치됨)
@@ -18,9 +18,11 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import require_admin, require_member_or_s2s
 from app.database.session import get_db
 from app.models.monitor import LlmAlert, LlmModelEvent
+from app.models.audit import LlmopsAuditLog
 from app.models.user import LlmopsUser
 from app.monitor import alerts as alert_job
 from app.monitor.disk import DiskOut, disk_usage
@@ -45,6 +47,8 @@ class AlertOut(BaseModel):
     last_seen_at: datetime
     resolved_at: datetime | None
     notified_at: datetime | None
+    notification_attempts: int = 0
+    last_notification_attempt_at: datetime | None = None
     acknowledged_at: datetime | None
     acknowledged_by: str | None
     action_note: str | None
@@ -57,6 +61,7 @@ class AlertListOut(BaseModel):
     last_evaluated_at: datetime | None
     last_result: dict[str, Any] | None
     alerts: list[AlertOut]
+    notification_max_attempts: int
 
 
 class AckIn(BaseModel):
@@ -111,6 +116,7 @@ async def list_alerts(
         last_evaluated_at=evaluated_at,
         last_result=last_result,
         alerts=[AlertOut.model_validate(a, from_attributes=True) for a in ordered],
+        notification_max_attempts=settings.alert_notify_max_attempts,
     )
 
 
@@ -121,18 +127,29 @@ async def acknowledge_alert(
     db: AsyncSession = Depends(get_db),
     user: LlmopsUser = Depends(require_admin),
 ) -> AlertOut:
-    """조치 기록. Sunset KPI 가 세는 '관제 신호로 내려진 모델 조치' 가 여기 쌓인다."""
-    alert = (await db.execute(select(LlmAlert).where(LlmAlert.id == alert_id))).scalar_one_or_none()
+    """확인/확인 취소. 실제 조치는 /actions에 별도로 기록한다."""
+    alert = (await db.execute(select(LlmAlert).where(LlmAlert.id == alert_id).with_for_update())).scalar_one_or_none()
     if alert is None:
         raise HTTPException(404, "alert not found")
+    before = {"acknowledged_at": alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+              "acknowledged_by": alert.acknowledged_by, "action_note": alert.action_note}
     if body.undo:
         alert.acknowledged_at = None
         alert.acknowledged_by = None
-        alert.action_note = None
+        # 과거 메모는 확인 취소로 삭제하지 않는다.
     else:
         alert.acknowledged_at = datetime.now(timezone.utc)
         alert.acknowledged_by = user.email
-        alert.action_note = body.action_note
+        if body.action_note is not None:
+            alert.action_note = body.action_note
+    db.add(LlmopsAuditLog(
+        actor_id=user.id, action="alert.unacknowledge" if body.undo else "alert.acknowledge",
+        target_type="llm_alert", target_id=str(alert_id),
+        payload={"before": before, "after": {
+            "acknowledged_at": alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+            "acknowledged_by": alert.acknowledged_by, "action_note": alert.action_note,
+        }},
+    ))
     await db.commit()
     await db.refresh(alert)
     return AlertOut.model_validate(alert, from_attributes=True)

@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     alert_eval_interval_seconds: int = Field(default=600)    # 알림 평가 잡 주기 (0 = 비활성)
     alert_fail_rate_threshold: float = Field(default=0.2)    # 24h 실패율 이 이상 + 건수 이상이면 failure_spike
     alert_fail_min_count: int = Field(default=3)
+    alert_notify_max_attempts: int = Field(default=3, ge=1, le=20)
+    alert_notify_retry_seconds: int = Field(default=600, ge=1)
 
     # --- S2S 읽기 키 (v0.3.0 — DocPipeline 등 다른 서비스가 읽기 API 를 pull) ---
     # JSON object {client_id: api_key}. 헤더 X-API-Key 로 검증. ingest 키(LLMOPS_INGEST_KEYS)와 별도.

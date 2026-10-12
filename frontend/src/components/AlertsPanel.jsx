@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { ago, formatBytes } from './modelFormat.js';
+import AlertActions from './AlertActions.jsx';
 
 const SEVERITY_CLASS = { critical: 'lc-retire', warning: 'lc-idle', info: 'lc-eval' };
 const SEVERITY_ICON = { critical: '🔴', warning: '🟡', info: '🔵' };
@@ -13,14 +14,16 @@ const KIND_LABEL = {
 };
 
 function AckForm({ alert, onDone }) {
-  const [note, setNote] = useState('');
+  const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async (undo) => {
-    setBusy(true);
+    setBusy(true); setError(null);
     try {
-      await api.post(`/api/monitor/alerts/${alert.id}/ack`, { action_note: note || null, undo });
+      await api.post(`/api/monitor/alerts/${alert.id}/ack`, { undo });
       onDone();
+    } catch (e) {
+      setError(typeof e.response?.data?.detail === 'string' ? e.response.data.detail : '확인 상태를 저장하지 못했습니다.');
     } finally {
       setBusy(false);
     }
@@ -29,21 +32,16 @@ function AckForm({ alert, onDone }) {
   if (alert.acknowledged_at) {
     return (
       <div className="small muted">
-        ✔ {alert.acknowledged_by} · {ago(alert.acknowledged_at)}
-        {alert.action_note && <div className="alert-note">{alert.action_note}</div>}
-        <button className="link-btn" disabled={busy} onClick={() => submit(true)}>조치 취소</button>
+        확인: {alert.acknowledged_by} · {ago(alert.acknowledged_at)}
+        <button className="link-btn" disabled={busy} onClick={() => submit(true)}>확인 취소</button>
+        {error && <p role="alert" className="err-text">{error}</p>}
       </div>
     );
   }
   return (
     <div className="alert-ack">
-      <input
-        className="ack-input"
-        placeholder="조치 내용 (예: ollama rm old:26b)"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-      />
-      <button disabled={busy} onClick={() => submit(false)}>조치 기록</button>
+      <button disabled={busy} onClick={() => submit(false)}>알림 확인</button>
+      {error && <p role="alert" className="err-text">{error}</p>}
     </div>
   );
 }
@@ -104,7 +102,7 @@ export default function AlertsPanel({ isAdmin }) {
         <p className="muted small" style={{ marginBottom: 10 }}>
           마지막 평가 {data.last_evaluated_at ? ago(data.last_evaluated_at) : '없음 (스케줄러 기동 후 1회)'}
           {data.last_result && ` · 신호 ${data.last_result.signals} · 신규 ${data.last_result.opened} · 해결 ${data.last_result.resolved}`}
-          {data.unacknowledged_count > 0 && ` · 미조치 ${data.unacknowledged_count}`}
+          {data.unacknowledged_count > 0 && ` · 미확인 ${data.unacknowledged_count}`}
         </p>
       )}
 
@@ -121,11 +119,13 @@ export default function AlertsPanel({ isAdmin }) {
           <div className="alert-msg">{a.message}</div>
           <div className="alert-meta muted small">
             최초 {ago(a.first_seen_at)} · 최근 {ago(a.last_seen_at)}
-            {a.notified_at && ' · Slack 발송됨'}
+            {a.notified_at ? ' · Slack 발송됨' : ` · 발송 성공 미확인 (시도 ${a.notification_attempts ?? 0}/${data.notification_max_attempts ?? '—'}회)`}
+            {!a.notified_at && a.notification_attempts >= data.notification_max_attempts && ' · 재시도 상한 도달'}
             {a.detail?.size_bytes ? ` · ${formatBytes(a.detail.size_bytes)}` : ''}
           </div>
           {isAdmin && !a.resolved_at && <AckForm alert={a} onDone={load} />}
-          {a.resolved_at && a.action_note && <div className="alert-note small muted">✔ {a.action_note}</div>}
+          {a.action_note && <div className="alert-note small muted">이전 확인 메모: {a.action_note}</div>}
+          <AlertActions alertId={a.id} isAdmin={isAdmin} />
         </div>
       ))}
     </section>
