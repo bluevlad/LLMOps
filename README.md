@@ -126,8 +126,8 @@ v0.2.0 Phase 3~6 (Consumer DB 통합 · 자동 인사이트 리포트 · SDK · 
 | `contract_anomaly` | warning | 24h 보고 계약 위반 (미등록 모델명 · deprecated 호출 · model 누락) |
 | `retire_candidate` | info | 60일 호출 0 + 90일 비교 0 |
 
-- `SLACK_WEBHOOK_URL` 이 있으면 신규 알림 1회 + 해결 시 1회 발송. 비어 있으면 DB 기록만 (화면에는 그대로 표시)
-- **조치 기록** (`POST /api/monitor/alerts/{id}/ack`) 이 Sunset KPI "관제 조치 수" 의 원천
+- `SLACK_WEBHOOK_URL`이 있으면 신규 알림과 해결 알림을 발송한다. 미발송 critical/warning은 `ALERT_NOTIFY_MAX_ATTEMPTS`(최초 포함 기본 3회), `ALERT_NOTIFY_RETRY_SECONDS`(기본 600초) 이내에서 재시도한다. 비어 있으면 DB 기록만 남긴다.
+- **확인**은 `POST /api/monitor/alerts/{id}/ack`, **실제 조치**는 `POST /api/monitor/alerts/{id}/actions`로 분리한다. 조치 KPI는 `/api/monitor/actions/summary`에서 조회하며, 과거 확인 메모는 실제 조치로 소급 집계하지 않는다.
 - 인벤토리 변경(`llm_model_events`)은 폴러가 diff 로 생성 — 신규 설치 · 제거(auto deprecated) · 복귀 · digest/크기 변경
 - 모델 삭제·pull 같은 **조작은 제공하지 않는다** (관측 plane 원칙). 삭제는 호스트에서 `ollama rm`
 
@@ -142,3 +142,7 @@ JWT 발급은 LLMOps 자체. role: `llmops_admin` / `llmops_viewer`.
 - **InfraWatcher** (`infrawatcher.unmong.com`) — 포트·컨테이너 헬스체크. LLMOps 종료 시 흡수 대상
 - **OpsConsole** (`opsconsole.unmong.com`) — IDP. LLMOps 의 OAuth/구조 패턴 참조 원본
 - **Ai-Legacy-bluevlad** (private) — 표준·전략·SSoT
+
+## 관제 신뢰성 구현 가이드
+
+[구현 플랜과 1차 검증 결과](docs/MODEL_MONITOR_IMPROVEMENT_PLAN.md)를 참고한다. 1차는 정기 수집 복구, 확인/실제 조치 분리, 중요 알림 최소 재시도다. 새 백엔드 배포 전 migration `e6b8c2d4f013` 적용이 필요하다.

@@ -27,7 +27,7 @@ def start_scheduler() -> None:
         "interval",
         seconds=settings.poller_ollama_interval_seconds,
         id="ollama_poller",
-        next_run_time=None,
+        # 시작 시 폴링은 lifespan이 수행한다. 이후 interval로 반복 실행한다.
         max_instances=1,
         coalesce=True,
     )
@@ -36,7 +36,7 @@ def start_scheduler() -> None:
         "interval",
         seconds=settings.poller_mlx_interval_seconds,
         id="mlx_poller",
-        next_run_time=None,
+        # 시작 시 폴링은 lifespan이 수행한다. 이후 interval로 반복 실행한다.
         max_instances=1,
         coalesce=True,
     )

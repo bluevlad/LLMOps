@@ -8,7 +8,7 @@
 - retire_candidate          info      수명주기 판정 retire-candidate (60일 미호출 + 90일 비교 0)
 
 열린 알림은 fingerprint 로 유일. 신호가 사라지면 resolved_at 을 찍고(critical/warning 은 Slack 해결 알림),
-같은 신호가 계속되면 last_seen_at/message 만 갱신 (재발송 없음).
+같은 신호가 계속되면 갱신하며, 미발송 critical/warning은 횟수·간격 제한 안에서 재시도한다.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import model_monitor
@@ -177,8 +177,44 @@ def reconcile(open_alerts: list[Any], signals: list[Signal]) -> Reconciled:
     return Reconciled(to_open, to_update, to_resolve)
 
 
+def notification_due(alert: Any, now: datetime, *, new: bool = False) -> bool:
+    if alert.resolved_at is not None or alert.notified_at is not None:
+        return False
+    if not new and alert.severity not in ("critical", "warning"):
+        return False
+    if alert.notification_attempts >= settings.alert_notify_max_attempts:
+        return False
+    last = alert.last_notification_attempt_at
+    return last is None or now - last >= timedelta(seconds=settings.alert_notify_retry_seconds)
+
+
+async def send_open_notification(db: AsyncSession, alert_id: int, *, new: bool = False) -> None:
+    # 한 알림에 대해 여러 evaluator가 동시에 발송하지 않도록 행 잠금.
+    # 완전한 outbox는 E-2에서 구현한다. 네트워크 timeout은 notify.send의 5초다.
+    alert = (await db.execute(select(LlmAlert).where(LlmAlert.id == alert_id)
+                             .with_for_update(skip_locked=True)
+                             .execution_options(populate_existing=True))).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if alert is None or not notification_due(alert, now, new=new):
+        await db.commit()
+        return
+    alert.notification_attempts += 1
+    alert.last_notification_attempt_at = now
+    sent = await notify.send(notify.format_alert(alert, "opened"))
+    if sent:
+        alert.notified_at = now
+    await db.commit()
+    if not sent:
+        logger.warning("alert notification failed: alert_id=%d attempt=%d/%d exhausted=%s",
+                       alert.id, alert.notification_attempts, settings.alert_notify_max_attempts,
+                       alert.notification_attempts >= settings.alert_notify_max_attempts)
+
+
 async def evaluate_and_store(db: AsyncSession, *, send_notifications: bool = True) -> dict[str, Any]:
     global _last_evaluated_at, _last_result
+    # API 수동 평가와 scheduler 평가를 프로세스 간에도 직렬화한다.
+    # 일회성 세션 잠금 대신 transaction 잠금을 사용해 rollback 시에도 해제한다.
+    await db.execute(text("SELECT pg_advisory_xact_lock(9110, 1)"))
     now = datetime.now(timezone.utc)
     signals = await collect_signals(db, now)
     open_alerts = (await db.execute(select(LlmAlert).where(LlmAlert.resolved_at.is_(None)))).scalars().all()
@@ -199,14 +235,16 @@ async def evaluate_and_store(db: AsyncSession, *, send_notifications: bool = Tru
         a.resolved_at = now
     await db.flush()
 
+    # 저장되지 않은 알림을 외부로 보내지 않는다.
+    await db.commit()
     if send_notifications and notify.configured():
-        for a in opened:
-            if await notify.send(notify.format_alert(a, "opened")):
-                a.notified_at = now
+        new_ids = {a.id for a in opened}
+        pending_ids = [a.id for a in opened] + [a.id for a in open_alerts if a.resolved_at is None]
+        for alert_id in pending_ids:
+            await send_open_notification(db, alert_id, new=alert_id in new_ids)
         for a in r.to_resolve:
             if a.severity in ("critical", "warning") and a.notified_at is not None:
                 await notify.send(notify.format_alert(a, "resolved"))
-    await db.commit()
 
     _last_evaluated_at = now
     _last_result = {

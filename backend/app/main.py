@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.alert_actions import router as alert_actions_router
 from app.api.auth import router as auth_router
 from app.api.batch_runs import router as batch_runs_router
 from app.api.comparisons import router as comparisons_router
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(models_router, prefix="/api")
     app.include_router(model_monitor_router, prefix="/api")
     app.include_router(monitor_router, prefix="/api")
+    app.include_router(alert_actions_router, prefix="/api")
     app.include_router(batch_runs_router, prefix="/api")
     app.include_router(comparisons_router, prefix="/api")
     app.include_router(usage_router, prefix="/api")
