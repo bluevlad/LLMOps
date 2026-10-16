@@ -36,13 +36,15 @@ KNOWN_CONSUMER_IDS: frozenset[str] = frozenset({
     "allergyinsight-kin-pipeline",
 })
 
-# 2026-09-05 인벤토리 정리 이후 활성 5개 모델 기준 (memory: model-inventory-cleanup-2026-09)
+# 운영 LLM 2종(gemma4 / exaone3.5) + 임베딩 1종 기준 — 2026-10-16 qwen2.5 계열 퇴출
 MODEL_ROLES: list[ModelRole] = [
     # gemma4:12b-mlx — 프로덕션 주력 (단일화 결정 2026-09-05)
     {"model": "gemma4:12b-mlx", "consumer_id": "skillradar-synthesis", "role": "enrich"},
     {"model": "gemma4:12b-mlx", "consumer_id": "allergyinsight-paper-translate", "role": "translate"},
     {"model": "gemma4:12b-mlx", "consumer_id": "allergyinsight-rag-chat", "role": "rag-answer"},
     {"model": "gemma4:12b-mlx", "consumer_id": "allergyinsight-evolution-proposal", "role": "proposal"},
+    {"model": "gemma4:12b-mlx", "consumer_id": "standup-weekly-newsletter", "role": "summarize"},
+    # 2026-10-16 qwen2.5-coder:14b 퇴출 → stage-2 analyze 승계 (think:false + 한국어 값·"미정" 규칙 프롬프트)
     {"model": "gemma4:12b-mlx", "consumer_id": "standup-weekly-newsletter", "role": "analyze"},
     # DocPipeline 파싱 정제 후보 (REFINE_LLM_MODELS, 2026-09-10) — exaone 과 요청/개입 단위 선택. think:false 로 호출
     {"model": "gemma4:12b-mlx", "consumer_id": "docpipeline-refine", "role": "refine", "instrumented": False,
@@ -55,11 +57,9 @@ MODEL_ROLES: list[ModelRole] = [
     # DocPipeline 은 insights/rounds 만 push 하고 batch_runs 보고는 아직 없음 → 호출 0 이 "미사용" 이 아님
     {"model": "exaone3.5:7.8b", "consumer_id": "docpipeline-refine", "role": "refine", "instrumented": False,
      "note": "파싱 전문 정제(머리말/꼬리말·깨짐·중복 제거) — batch_runs 미연동, 라이선스상 정제물 골든셋 승격 시 검토"},
-    # qwen2.5-coder:14b — StandUp stage-2 (주 1회) 유일 실사용
-    {"model": "qwen2.5-coder:14b", "consumer_id": "standup-weekly-newsletter", "role": "stage-2"},
-    # qwen2.5:7b — 서비스 호출 없음, 평가·파인튜닝 베이스 전용 티어 (Apache 2.0)
-    {"model": "qwen2.5:7b", "consumer_id": None, "role": "eval-base",
-     "note": "비교 실험 / 파인튜닝 베이스 전용 — 프로덕션 호출 없음이 정상"},
+    # 2026-10-16 qwen2.5:7b 퇴출 → StandUp Claude 세션 회의록 요약 승계 (batch_runs 보고 없음)
+    {"model": "exaone3.5:7.8b", "consumer_id": "standup-weekly-newsletter", "role": "session-summary",
+     "instrumented": False, "note": "SESSION_LOG_SUMMARY_MODEL — 회의록 JSON 요약, batch_runs 미연동"},
     # nomic-embed-text — 임베딩 경로는 batch_runs 계측 밖
     {"model": "nomic-embed-text:latest", "consumer_id": "allergyinsight-rag-chat",
      "role": "embedding", "instrumented": False},
