@@ -23,11 +23,9 @@ def test_snapshot_consumers_match_registry_snapshot() -> None:
     assert model_roles.snapshot_consistency_errors(model_roles.KNOWN_CONSUMER_IDS) == []
 
 
-def test_snapshot_covers_active_five_models() -> None:
+def test_snapshot_covers_operating_models() -> None:
     covered = {r["model"] for r in model_roles.MODEL_ROLES}
-    assert covered == {
-        "gemma4:12b-mlx", "exaone3.5:7.8b", "qwen2.5-coder:14b", "qwen2.5:7b", "nomic-embed-text:latest",
-    }
+    assert covered == {"gemma4:12b-mlx", "exaone3.5:7.8b", "nomic-embed-text:latest"}
 
 
 def test_lifecycle_deprecated_wins() -> None:
@@ -46,25 +44,28 @@ def test_lifecycle_active_when_called_within_60d() -> None:
 
 def test_lifecycle_retire_candidate_after_60d_and_90d() -> None:
     assert model_roles.lifecycle_status(
-        model_id="qwen2.5-coder:14b", deprecated_at=None,
+        model_id="retired:14b", deprecated_at=None,
         last_call_at=NOW - timedelta(days=61), last_comparison_at=NOW - timedelta(days=91), now=NOW,
     ) == "retire-candidate"
 
 
 def test_lifecycle_idle_when_only_compared() -> None:
     assert model_roles.lifecycle_status(
-        model_id="qwen2.5-coder:14b", deprecated_at=None,
+        model_id="retired:14b", deprecated_at=None,
         last_call_at=None, last_comparison_at=NOW - timedelta(days=10), now=NOW,
     ) == "idle"
 
 
-def test_lifecycle_eval_only_tier() -> None:
+def test_lifecycle_eval_only_tier(monkeypatch) -> None:
+    monkeypatch.setattr(model_roles, "MODEL_ROLES", [
+        *model_roles.MODEL_ROLES, {"model": "bench:7b", "consumer_id": None, "role": "eval-base"},
+    ])
     assert model_roles.lifecycle_status(
-        model_id="qwen2.5:7b", deprecated_at=None,
+        model_id="bench:7b", deprecated_at=None,
         last_call_at=None, last_comparison_at=NOW - timedelta(days=30), now=NOW,
     ) == "eval-only"
     assert model_roles.lifecycle_status(
-        model_id="qwen2.5:7b", deprecated_at=None,
+        model_id="bench:7b", deprecated_at=None,
         last_call_at=None, last_comparison_at=NOW - timedelta(days=120), now=NOW,
     ) == "retire-candidate"
 
@@ -84,11 +85,12 @@ def test_lifecycle_unknown_model_falls_back_to_generic_rule() -> None:
 
 
 def test_role_tags_from_snapshot() -> None:
-    assert model_roles.role_tags_for("exaone3.5:7.8b") == ["analyze", "compose", "refine"]
+    assert model_roles.role_tags_for("exaone3.5:7.8b") == ["analyze", "compose", "refine", "session-summary"]
+    assert "analyze" in model_roles.role_tags_for("gemma4:12b-mlx")
     assert "docpipeline-refine" in model_roles.consumers_for("exaone3.5:7.8b")
     assert "skillradar-synthesis" in model_roles.consumers_for("gemma4:12b-mlx")
     assert "refine" in model_roles.role_tags_for("gemma4:12b-mlx") and "docpipeline-refine" in model_roles.consumers_for("gemma4:12b-mlx")
-    assert model_roles.consumers_for("qwen2.5:7b") == []
+    assert model_roles.consumers_for("qwen2.5:7b") == []          # 2026-10-16 퇴출
 
 
 def test_parse_ps_payload() -> None:
